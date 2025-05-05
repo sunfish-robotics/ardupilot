@@ -28,7 +28,13 @@ jobs:
         run: |
           . .github/workflows/ccache.env
       - name: Install Dependencies
-        run: Tools/environment_install/install-prereqs-ubuntu.sh
+        run: |
+          PATH="/github/home/.local/bin:$PATH"
+          ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+          sed -i 's/\$EUID/\$ID/' Tools/environment_install/install-prereqs-ubuntu.sh
+          sed -i 's/sudo usermod/\#sudo usermod/' Tools/environment_install/install-prereqs-ubuntu.sh
+          echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+          Tools/environment_install/install-prereqs-ubuntu.sh -y
       - name: Build
         run: . ~/.profile && make sunfish
       - name: Upload binaries to Google Drive
