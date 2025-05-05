@@ -137,7 +137,7 @@ PH7  SPI5_MISO SPI5
 PF11 SPI5_MOSI SPI5
 PG7  FRAM_CS CS
 
-# SPI devices 
+# SPI devices
 SPIDEV bmi088_g SPI2 DEVID1  BMI088_G_CS    MODE3 10*MHZ  10*MHZ
 SPIDEV bmi088_a SPI2 DEVID2  BMI088_A_CS    MODE3 10*MHZ  10*MHZ
 SPIDEV iim42652 SPI1 DEVID1  IIM42652_CS    MODE3  2*MHZ   8*MHZ
@@ -189,13 +189,14 @@ PA8 I2C3_SCL I2C3
 PH8 I2C3_SDA I2C3
 
 # I2C4, ICM20100
-# Note(Michael-F-Bryan): Disabled so we don't use internal barometer #2
-# PF14 I2C4_SCL I2C4
-# PF15 I2C4_SDA I2C4
-# PG5  DRDY1_ICP20100 INPUT
+# Note(Michael-F-Bryan): Commented out so we don't use internal barometer #2
+PF14 I2C4_SCL I2C4
+PF15 I2C4_SDA I2C4
+PG5  DRDY1_ICP20100 INPUT
 
 # order of I2C buses
-I2C_ORDER I2C3 I2C4 I2C1 I2C2
+# Note(Michael-F-Bryan): We've removed I2C4 so it isn't used
+I2C_ORDER I2C3 I2C1 I2C2
 define HAL_I2C_INTERNAL_MASK 3
 
 # armed indication
