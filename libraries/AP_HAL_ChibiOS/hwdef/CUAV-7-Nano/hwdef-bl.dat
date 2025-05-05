@@ -98,7 +98,13 @@ DMA_PRIORITY SDMMC* USART6* ADC* UART* USART* SPI* TIM*
 # enable FAT filesystem support (needs a microSD defined via SDMMC)
 define HAL_OS_FATFS_IO 1
 
-define AP_BOOTLOADER_FLASH_FROM_SD_ENABLED 1
+# Disable DroneCAN for bootloader
+define AP_CAN_SLCAN_ENABLED 0
+define HAL_CAN_DEFAULT_NODE_ID 0
 
+# Enable networking with DHCP
 define AP_BOOTLOADER_NETWORK_ENABLED 1
 define AP_BOOTLOADER_NETWORK_USE_DHCP 1
+
+# Include network bootloader configuration
+include ../include/network_bootloader.inc
