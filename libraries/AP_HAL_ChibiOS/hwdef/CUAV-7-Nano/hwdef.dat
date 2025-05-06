@@ -189,14 +189,13 @@ PA8 I2C3_SCL I2C3
 PH8 I2C3_SDA I2C3
 
 # I2C4, ICM20100
-# Note(Michael-F-Bryan): Commented out so we don't use internal barometer #2
-PF14 I2C4_SCL I2C4
-PF15 I2C4_SDA I2C4
+# HACK(Michael-F-Bryan): SCL and SDA have been switched to disable the internal barometer
+PF15 I2C4_SCL I2C4
+PF14 I2C4_SDA I2C4
 PG5  DRDY1_ICP20100 INPUT
 
 # order of I2C buses
-# Note(Michael-F-Bryan): We've removed I2C4 so it isn't used
-I2C_ORDER I2C3 I2C1 I2C2
+I2C_ORDER I2C3 I2C4 I2C1 I2C2
 define HAL_I2C_INTERNAL_MASK 3
 
 # armed indication
