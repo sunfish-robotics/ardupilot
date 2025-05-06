@@ -46,6 +46,7 @@ sunfish: $(BOARDS)
 		mkdir -p "$(SUNFISH_DIR)/$$board"; \
 		cp build/$$board/bin/ardusub* $(SUNFISH_DIR)/$$board/; \
 	done
+	@echo "Written to $(ROOT)/$(SUNFISH_DIR)"
 
 help:
 	@echo "Ardupilot Building"
