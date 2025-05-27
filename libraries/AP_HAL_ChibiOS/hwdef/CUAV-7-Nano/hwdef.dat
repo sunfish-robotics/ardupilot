@@ -16,6 +16,9 @@ STM32_ST_USE_TIMER 2
 # board ID for firmware load
 APJ_BOARD_ID 7000
 
+# enable firmware checking
+define AP_CHECK_FIRMWARE_ENABLED 1
+
 # bootloader takes first sector
 FLASH_RESERVE_START_KB 128
 
@@ -28,6 +31,9 @@ FLASH_SIZE_KB 2048
 
 # with 2M flash we can afford to optimize for speed
 env OPTIMIZE -O2
+
+#build firmware that 
+env BUILD_ABIN True
 
 # order of UARTs (and USB)
 SERIAL_ORDER OTG1 UART7 UART5 USART1 UART8 USART3 OTG2

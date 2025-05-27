@@ -65,8 +65,8 @@
 
 void BL_Network::link_up_cb(void *p)
 {
-    auto *driver = (BL_Network *)p;
 #if AP_BOOTLOADER_NETWORK_USE_DHCP
+    auto *driver = (BL_Network *)p;
     dhcp_start(driver->thisif);
 #endif
     // char ipstr[IP4_STR_LEN];
