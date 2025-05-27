@@ -37,7 +37,7 @@
 #endif
 
 // less LWIP functionality in the bootloader
-#define LWIP_DHCP 0
+#define LWIP_DHCP 1
 #define LWIP_UDP 1
 #define LWIP_PPP 0
 #define LWIP_IGMP 1
