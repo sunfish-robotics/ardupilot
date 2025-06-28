@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-          fetch-tags: true
+          fetch-depth: 0
       - name: ccache cache files
         uses: actions/cache@v4
         with:
@@ -26,6 +26,10 @@ jobs:
       - name: setup ccache
         run: |
           . .github/workflows/ccache.env
+      - name: Setup rclone
+        uses: AnimMouse/setup-rclone@v1
+        with:
+          rclone_config: ${{ secrets.RCLONE_CONFIG }}
       - name: Build Sunfish firmware
         run: |
           git config --global --add safe.directory ${GITHUB_WORKSPACE}
@@ -33,11 +37,6 @@ jobs:
           PATH="/github/home/.local/bin:$PATH"
           make sunfish
           ccache -s
-      - name: Setup rclone
-        run: |
-          curl https://rclone.org/install.sh | bash
-          mkdir -p ~/.config/rclone
-          echo "${{ secrets.RCLONE_CONFIG }}" > ~/.config/rclone/rclone.conf
       - name: Upload binaries to Google Drive with rclone
         run: |
           rclone copy \
