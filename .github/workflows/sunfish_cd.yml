@@ -16,17 +16,13 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-tags: true
-      - name: Prepare ccache timestamp
-        id: ccache_cache_timestamp
-        run: |
-          NOW=$(date -u +"%F-%T")
-          echo "timestamp=${NOW}" >> $GITHUB_OUTPUT
       - name: ccache cache files
         uses: actions/cache@v4
         with:
           path: ~/.ccache
-          key: ${{github.workflow}}-ccache-${{steps.ccache_cache_timestamp.outputs.timestamp}}
-          restore-keys: ${{github.workflow}}-ccache-${{steps.ccache_cache_timestamp.outputs.timestamp}}  # restore ccache from either previous build on this branch or on master
+          key: ${{github.workflow}}-ccache-${{github.ref}}
+          restore-keys: |
+            ${{github.workflow}}-ccache-
       - name: setup ccache
         run: |
           . .github/workflows/ccache.env
