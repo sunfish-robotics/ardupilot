@@ -26,6 +26,8 @@ jobs:
       - name: setup ccache
         run: |
           . .github/workflows/ccache.env
+      - name: Setup GitHub CLI
+        uses: actions4gh/setup-gh@v1
       - name: Setup rclone
         uses: AnimMouse/setup-rclone@v1
         with:
