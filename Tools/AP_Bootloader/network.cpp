@@ -61,19 +61,19 @@
 
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
-static AP_Networking_CAN mcast_server;
+// static AP_Networking_CAN mcast_server;
 
 void BL_Network::link_up_cb(void *p)
 {
-    auto *driver = (BL_Network *)p;
 #if AP_BOOTLOADER_NETWORK_USE_DHCP
+    auto *driver = (BL_Network *)p;
     dhcp_start(driver->thisif);
 #endif
-    char ipstr[IP4_STR_LEN];
-    can_printf("IP %s", SocketAPM::inet_addr_to_str(ntohl(driver->thisif->ip_addr.addr), ipstr, sizeof(ipstr)));
+    // char ipstr[IP4_STR_LEN];
+    // can_printf("IP %s", SocketAPM::inet_addr_to_str(ntohl(driver->thisif->ip_addr.addr), ipstr, sizeof(ipstr)));
 
-    // start mcast CAN server
-    mcast_server.start((1U<<HAL_NUM_CAN_IFACES)-1);
+    // // start mcast CAN server
+    // mcast_server.start((1U<<HAL_NUM_CAN_IFACES)-1);
 }
 
 void BL_Network::link_down_cb(void *p)
@@ -650,7 +650,7 @@ void BL_Network::status_printf(const char *fmt, ...)
     va_start(ap, fmt);
     vsnprintf(bl_status, sizeof(bl_status), fmt, ap);
     va_end(ap);
-    can_printf("%s", bl_status);
+//     can_printf("%s", bl_status);
 }
 
 #endif // AP_BOOTLOADER_NETWORK_ENABLED
