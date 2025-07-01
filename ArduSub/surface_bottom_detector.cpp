@@ -91,6 +91,7 @@ void Sub::set_surfaced(bool at_surface)
 
     if (ap.at_surface) {
         LOGGER_WRITE_EVENT(LogEvent::SURFACED);
+        gcs().send_text(MAV_SEVERITY_INFO, "SURFACED");
     } else {
         LOGGER_WRITE_EVENT(LogEvent::NOT_SURFACED);
     }
