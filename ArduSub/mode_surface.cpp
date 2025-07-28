@@ -6,13 +6,19 @@ bool ModeSurface::init(bool ignore_checks)
     if(!sub.control_check_barometer()) {
         return false;
     }
+    //copy manual mode's init
+    position_control->set_pos_desired_z_cm(0);
+    sub.set_neutral_controls();
+    
+    // attitude hold inputs become thrust inputs in manual mode
+    // set to neutral to prevent chaotic behavior (esp. roll/pitch)
+    
+    // // initialize vertical speeds and acceleration
+    // position_control->set_max_speed_accel_z(-sub.get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
+    // position_control->set_correction_speed_accel_z(-sub.get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
-    // initialize vertical speeds and acceleration
-    position_control->set_max_speed_accel_z(-sub.get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
-    position_control->set_correction_speed_accel_z(-sub.get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
-
-    // initialise position and desired velocity
-    position_control->init_z_controller();
+    // // initialise position and desired velocity
+    // position_control->init_z_controller();
     return true;
 
 }
@@ -23,7 +29,6 @@ void ModeSurface::run()
 
     // if not armed set throttle to zero and exit immediately
     if (!motors.armed()) {
-        gcs().send_text(MAV_SEVERITY_ERROR, "Not armed - cannot surface");
         motors.output_min();
         motors.set_desired_spool_state(AP_Motors::DesiredSpoolState::GROUND_IDLE);
         attitude_control->set_throttle_out(0,true,g.throttle_filt);
@@ -36,7 +41,7 @@ void ModeSurface::run()
     // if (sub.ap.at_surface) {
     //     gcs().send_text(MAV_SEVERITY_INFO, "At surface!");
         // set_mode(Mode::Number::ALT_HOLD, ModeReason::SURFACE_COMPLETE);
-    }
+    // }
 
     // // convert pilot input to lean angles
     // // To-Do: convert sub.get_pilot_desired_lean_angles to return angles as floats
@@ -56,9 +61,14 @@ void ModeSurface::run()
     // position_control->update_z_controller();
 
     // set vertical thrusters to a constant value
-    motors.set_throttle(0.6f);
 
     // pilot has control for repositioning
-    motors.set_forward(channel_forward->norm_input());
-    motors.set_lateral(channel_lateral->norm_input());
+    sub.motors.set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
+
+    sub.motors.set_roll(channel_roll->norm_input());
+    sub.motors.set_pitch(channel_pitch->norm_input());
+    sub.motors.set_yaw(channel_yaw->norm_input() * g.acro_yaw_p / ACRO_YAW_P);
+    sub.motors.set_forward(channel_forward->norm_input());
+    sub.motors.set_lateral(channel_lateral->norm_input());
+    sub.motors.set_throttle(0.7f);
 }
