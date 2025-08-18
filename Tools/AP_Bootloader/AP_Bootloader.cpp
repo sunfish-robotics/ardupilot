@@ -110,7 +110,7 @@ int main(void)
         try_boot = true;
         timeout = 0;
     } else if (m == RTC_BOOT_HOLD) {
-        timeout = 0;
+        timeout = 600000; // 10 minutes
     } else if (m == RTC_BOOT_FAST) {
         try_boot = true;
         timeout = 0;
@@ -234,7 +234,7 @@ int main(void)
     while (true) {
         uint32_t t0 = AP_HAL::millis();
         while (timeout == 0 || AP_HAL::millis() - t0 <= timeout) {
-            can_update();
+            // can_update();
             chThdSleep(chTimeMS2I(1));
         }
         jump_to_app();
