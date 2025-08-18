@@ -654,7 +654,6 @@ bootloader(unsigned timeout)
 
             // enable the LED while verifying the erase
             led_set(LED_ON);
-
             // verify the erase
             for (address = 0; address < board_info.fw_size; address += 4) {
                 if (flash_func_read_word(address) != 0xffffffff) {
