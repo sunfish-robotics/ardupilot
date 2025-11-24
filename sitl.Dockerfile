@@ -1,45 +1,47 @@
-FROM ubuntu:24.04
+# ArduPilot Software-in-the-Loop Dockerfile
+# Build with: docker build --platform linux/amd64 --build-arg GIT_COMMIT=$(git rev-parse HEAD) -f sitl.Dockerfile -t ardupilot-sitl:$(git rev-parse HEAD) .
+# Uses ardupilot/ardupilot-dev-base which already has all dependencies installed
 
-ARG COMMIT_HASH=master
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-# install git and other dependencies
-RUN apt-get update && apt-get install -y git sudo lsb-release tzdata python3 python3-pip && git config --global url."https://github.com/".insteadOf git://github.com/
-
-# Now grab the ArduPilot commit from GitHub and give the default ubuntu user ownership
-RUN git init /ardupilot && \
-    cd /ardupilot && \
-    git remote add origin https://github.com/sunfish-robotics/ardupilot.git && \
-    git fetch origin ${COMMIT_HASH} && \
-    git checkout --recurse-submodules ${COMMIT_HASH} && \
-    chown -R $(id -u ubuntu):$(id -g ubuntu) /ardupilot
+FROM ardupilot/ardupilot-dev-base:v0.1.3
 WORKDIR /ardupilot
 
-# We can't run the install script as root, so we need to give the default ubuntu user sudo privileges and switch to it
-RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu && chmod 0440 /etc/sudoers.d/ubuntu
-USER ubuntu
-RUN USER=ubuntu Tools/environment_install/install-prereqs-ubuntu.sh -y
+ARG GIT_COMMIT=master
+ARG VEHICLE_TYPE=ArduSub
 
-RUN pip3 install empy==3.3.4 pexpect
+# Clone ArduPilot repository using HTTPS with shallow clone to reduce download size
+# Using depth 100 to ensure we get the specified commit even if it's not the latest
+RUN git clone --depth 100 --recurse-submodules --shallow-submodules https://github.com/sunfish-robotics/ardupilot.git /ardupilot && \
+    cd /ardupilot && \
+    git checkout ${GIT_COMMIT} && \
+    git submodule update --init --recursive --depth 1
 
-# Continue build instructions from https://github.com/ArduPilot/ardupilot/blob/master/BUILD.md
-RUN ./waf distclean
-RUN ./waf configure --board sitl
-RUN ./waf sub
+# Build ArduPilot SITL
+RUN BUILD_TARGET=$(case "${VEHICLE_TYPE}" in \
+        ArduSub|Sub) echo "bin/ardusub" ;; \
+        ArduCopter|Copter) echo "bin/arducopter" ;; \
+        ArduPlane|Plane) echo "bin/arduplane" ;; \
+        ArduRover|Rover) echo "bin/ardurover" ;; \
+        Blimp) echo "bin/blimp" ;; \
+        AntennaTracker|Tracker) echo "bin/antennatracker" ;; \
+        *) echo "bin/ardusub" ;; \
+    esac) && \
+    cd /ardupilot && \
+    ./waf configure --board sitl && \
+    ./waf build --target ${BUILD_TARGET}
 
-# TCP 5760 is what the sim exposes by default
+# Create SITL-specific entrypoint
+RUN echo -e '#!/bin/bash\nset -e\ncd /ardupilot\nexec "$@"' > /tmp/sitl_entrypoint.sh && \
+    chmod +x /tmp/sitl_entrypoint.sh && \
+    mv /tmp/sitl_entrypoint.sh /sitl_entrypoint.sh
+
+# Runtime configuration
+ENV BUILDLOGS=/tmp/buildlogs \
+    INSTANCE=0 \
+    LOCATION=CockburnSound \
+    MODEL=ZODA_6DOF \
+    SPEEDUP=1 \
+    VEHICLE=ArduSub
+
 EXPOSE 5760/tcp
-
-# Variables for simulator
-ENV INSTANCE=0
-# Either a location in Tools/autotest/locations.txt or lat,lon,alt,heading
-ENV LOCATION=CockburnSound
-ENV MODEL=ZODA_6DOF
-ENV SPEEDUP=1
-ENV VEHICLE=ArduSub
-
-
-ENTRYPOINT ["/sitl_entrypoint.sh", "/ardupilot/Tools/autotest/sim_vehicle.py"]
-
-CMD ["--vehicle", "${VEHICLE}", "-I${INSTANCE}", "--custom-location=${LOCATION}", "-w", "--frame", "${MODEL}", "--no-rebuild", "--no-mavproxy", "--speedup", "${SPEEDUP}"]
+ENTRYPOINT ["/sitl_entrypoint.sh"]
+CMD ["/bin/bash", "-c", "Tools/autotest/sim_vehicle.py --vehicle ${VEHICLE} -I${INSTANCE} --custom-location=${LOCATION} -w --frame ${MODEL} --no-rebuild --no-mavproxy --speedup ${SPEEDUP}"]
