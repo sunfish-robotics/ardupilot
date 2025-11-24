@@ -57,9 +57,13 @@ jobs:
         include:
           - package: ardupilot-sitl
             dockerfile: sitl.Dockerfile
+            platform: linux/amd64
+            base_image: ardupilot/ardupilot-dev-base
+          - package: ardupilot-sitl
+            dockerfile: sitl.Dockerfile
+            platform: linux/arm64
+            base_image: ardupilot/ardupilot-dev-aarch64
     env:
-      DOCKERFILE: sitl.Dockerfile
-      PACKAGE: ardupilot-sitl
       REGISTRY: ghcr.io
       IMAGE_NAME: ghcr.io/${{github.repository}}/${{matrix.package}}
     steps:
@@ -88,5 +92,7 @@ jobs:
           push: ${{github.ref == 'refs/heads/master'}}
           tags: ${{steps.meta.outputs.tags}}
           labels: ${{steps.meta.outputs.labels}}
-          platforms: linux/amd64,linux/arm64
-          build-args: COMMIT=${{github.sha}}
+          platforms: ${{matrix.platform}}
+          build-args: |
+            GIT_COMMIT=${{github.sha}}
+            BASE_IMAGE=${{matrix.base_image}}
