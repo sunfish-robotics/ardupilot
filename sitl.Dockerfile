@@ -1,8 +1,26 @@
 # ArduPilot Software-in-the-Loop Dockerfile
-# Build with: docker build --platform linux/amd64 --build-arg GIT_COMMIT=$(git rev-parse HEAD) -f sitl.Dockerfile -t ardupilot-sitl:$(git rev-parse HEAD) .
-# Uses ardupilot/ardupilot-dev-base which already has all dependencies installed
+#
+# How you build the image will change depending on the host platform.
+#
+# For M1 MacOS:
+#   docker buildx build --platform=linux/aarch64 \
+#     --build-arg GIT_COMMIT=$(git rev-parse HEAD) \
+#     --build-arg BASE_IMAGE=ardupilot/ardupilot-dev-aarch64 \
+#     -f sitl.Dockerfile \
+#     -t ardupilot-sitl:$(git rev-parse HEAD) .
+#
+# All other platforms:
+#   docker build --build-arg GIT_COMMIT=$(git rev-parse HEAD) \
+#     --build-arg BASE_IMAGE=ardupilot/ardupilot-dev-base \
+#     -f sitl.Dockerfile \
+#     -t ardupilot-sitl:$(git rev-parse HEAD) .
 
-FROM ardupilot/ardupilot-dev-base:v0.1.3
+
+# Note:
+ARG BASE_IMAGE=ardupilot/ardupilot-dev-base
+ARG IMAGE_VERSION=v0.1.5
+
+FROM ${BASE_IMAGE}:${IMAGE_VERSION}
 WORKDIR /ardupilot
 
 ARG GIT_COMMIT=master
@@ -12,7 +30,7 @@ ARG VEHICLE_TYPE=ArduSub
 # Using depth 100 to ensure we get the specified commit even if it's not the latest
 RUN git clone --depth 100 --recurse-submodules --shallow-submodules https://github.com/sunfish-robotics/ardupilot.git /ardupilot && \
     cd /ardupilot && \
-    git checkout ${GIT_COMMIT} && \
+    (git checkout ${GIT_COMMIT} 2>/dev/null || (git fetch origin ${GIT_COMMIT} && git checkout ${GIT_COMMIT})) && \
     git submodule update --init --recursive --depth 1
 
 # Build ArduPilot SITL
@@ -29,10 +47,17 @@ RUN BUILD_TARGET=$(case "${VEHICLE_TYPE}" in \
     ./waf configure --board sitl && \
     ./waf build --target ${BUILD_TARGET}
 
-# Create SITL-specific entrypoint
-RUN echo -e '#!/bin/bash\nset -e\ncd /ardupilot\nexec "$@"' > /tmp/sitl_entrypoint.sh && \
-    chmod +x /tmp/sitl_entrypoint.sh && \
-    mv /tmp/sitl_entrypoint.sh /sitl_entrypoint.sh
+# Create SITL-specific entrypoint that sources the environment
+RUN export SITL_ENTRYPOINT="/tmp/sitl_entrypoint.sh" && \
+    echo "#!/bin/bash" > $SITL_ENTRYPOINT && \
+    echo "set -e" >> $SITL_ENTRYPOINT && \
+    echo "if [ -f /home/ardupilot/.ardupilot_env ]; then" >> $SITL_ENTRYPOINT && \
+    echo "  source /home/ardupilot/.ardupilot_env" >> $SITL_ENTRYPOINT && \
+    echo "fi" >> $SITL_ENTRYPOINT && \
+    echo "cd /ardupilot" >> $SITL_ENTRYPOINT && \
+    echo 'exec "$@"' >> $SITL_ENTRYPOINT && \
+    chmod +x $SITL_ENTRYPOINT && \
+    sudo mv $SITL_ENTRYPOINT /sitl_entrypoint.sh
 
 # Runtime configuration
 ENV BUILDLOGS=/tmp/buildlogs \
@@ -44,4 +69,4 @@ ENV BUILDLOGS=/tmp/buildlogs \
 
 EXPOSE 5760/tcp
 ENTRYPOINT ["/sitl_entrypoint.sh"]
-CMD ["/bin/bash", "-c", "Tools/autotest/sim_vehicle.py --vehicle ${VEHICLE} -I${INSTANCE} --custom-location=${LOCATION} -w --frame ${MODEL} --no-rebuild --no-mavproxy --speedup ${SPEEDUP}"]
+CMD ["/bin/bash", "-c", "Tools/autotest/sim_vehicle.py --vehicle=${VEHICLE} --instance=${INSTANCE} --location=${LOCATION} -w --frame=${MODEL} --no-rebuild --no-mavproxy --speedup=${SPEEDUP}"]
