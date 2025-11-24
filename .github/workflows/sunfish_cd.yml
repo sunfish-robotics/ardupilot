@@ -6,6 +6,10 @@ on:
       - master
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     name: Upload firmware to Google Drive
@@ -42,6 +46,7 @@ jobs:
           make sunfish
           ccache -s
       - name: Upload binaries to Google Drive with rclone
+        if: ${{github.ref == 'refs/heads/master'}}
         run: |
           rclone copy \
             build/sunfish/$(git describe --tags) \
@@ -92,3 +97,5 @@ jobs:
           build-args: |
             GIT_COMMIT=${{github.sha}}
             BASE_IMAGE=${{matrix.base_image}}
+          cache-from: type=gha,scope=${{ matrix.package }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.package }}
