@@ -60,4 +60,4 @@ ENV BUILDLOGS=/tmp/buildlogs \
 
 EXPOSE 5760/tcp
 ENTRYPOINT ["/sitl_entrypoint.sh"]
-CMD ["/bin/bash", "-c", "Tools/autotest/sim_vehicle.py --vehicle=${VEHICLE} --instance=${INSTANCE} --location=${LOCATION} -w --frame=${MODEL} --no-rebuild --no-mavproxy --speedup=${SPEEDUP}"]
+CMD ["/bin/bash", "-c", "Tools/autotest/sim_vehicle.py --vehicle=${VEHICLE} --instance=${INSTANCE} --location=${LOCATION} -w --frame=${MODEL} --no-rebuild --no-mavproxy --speedup=${SPEEDUP} --sim-address=0.0.0.0"]
