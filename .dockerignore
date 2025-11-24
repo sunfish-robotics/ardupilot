@@ -1,31 +1,47 @@
 # Docker context ignore list
 .azure
 .github
-.git
 .idea
 .vagrant
-AntennaTracker
-Rover
-ArduCopter
-ArduPlane
-ArduSub
 benchmarks
 build
 docs
-libraries
 mk
-modules
 tests
-Tools
 # autotest directories
 test.*
 terrain
 logs
 # mavproxy stuff
 mav.*
+autotest_result_*_junit.xml
+
+# Exclude vehicle directories (but allow them for sitl.Dockerfile via negation)
+AntennaTracker
+Rover
+ArduCopter
+ArduPlane
+ArduSub
+Blimp
+
+# Exclude source directories (but allow them for sitl.Dockerfile via negation)
+libraries
+modules
+Tools
+
+# Include directories needed for sitl.Dockerfile (must come after exclusions)
+!.git
+!modules
+!libraries
+!Tools
+!ArduSub
+!ArduCopter
+!ArduPlane
+!ArduRover
+!Blimp
+!AntennaTracker
 
 # include the setup script and completion
 !Tools/environment_install/install-prereqs-ubuntu.sh
 !Tools/environment_install/install-prereqs-arch.sh
 !Tools/completion
-autotest_result_*_junit.xml
