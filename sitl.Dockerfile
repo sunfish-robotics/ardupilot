@@ -1,15 +1,6 @@
 # ArduPilot Software-in-the-Loop Dockerfile
 #
-# How you build the image will change depending on the host platform.
-#
-# For M1 MacOS:
-#   docker buildx build --platform=linux/aarch64 \
-#     --build-arg GIT_COMMIT=$(git rev-parse HEAD) \
-#     --build-arg BASE_IMAGE=ardupilot/ardupilot-dev-aarch64 \
-#     -f sitl.Dockerfile \
-#     -t ardupilot-sitl:$(git rev-parse HEAD) .
-#
-# All other platforms:
+# You can use the following command to build the image:
 #   docker build --build-arg GIT_COMMIT=$(git rev-parse HEAD) \
 #     --build-arg BASE_IMAGE=ardupilot/ardupilot-dev-base \
 #     -f sitl.Dockerfile \

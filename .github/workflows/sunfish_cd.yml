@@ -50,7 +50,7 @@ jobs:
             --transfers=4 --checkers=8 --progress
 
   sitl-docker-container:
-    name: Build SITL Docker container
+    name: Build SITL Docker container (${{matrix.platform}})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -59,10 +59,6 @@ jobs:
             dockerfile: sitl.Dockerfile
             platform: linux/amd64
             base_image: ardupilot/ardupilot-dev-base
-          - package: ardupilot-sitl
-            dockerfile: sitl.Dockerfile
-            platform: linux/arm64
-            base_image: ardupilot/ardupilot-dev-aarch64
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ghcr.io/${{github.repository}}/${{matrix.package}}
