@@ -5,6 +5,11 @@
 #     --build-arg BASE_IMAGE=ardupilot/ardupilot-dev-base \
 #     -f sitl.Dockerfile \
 #     -t ardupilot-sitl:$(git rev-parse HEAD) .
+#
+# There are a couple of useful extension points in the Dockerfile:
+# - The default working dir is `/sitl/workdir`, so you can mount your Lua scripts
+#   to `/sitl/workdir/APM/scripts` and they'll be loaded automatically.
+# - You can override the autopilot parameters by mounting a file to `/sitl/init.params`
 
 
 # Note:
@@ -50,14 +55,18 @@ RUN export SITL_ENTRYPOINT="/tmp/sitl_entrypoint.sh" && \
     chmod +x $SITL_ENTRYPOINT && \
     sudo mv $SITL_ENTRYPOINT /sitl_entrypoint.sh
 
+RUN mkdir -p /sitl/workdir && touch /sitl/init.params
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
+    CMD grep -q "Waiting for connection ...." /tmp/ArduSub.log || exit 1
+
 # Runtime configuration
-ENV BUILDLOGS=/tmp/buildlogs \
-    INSTANCE=0 \
+ENV INSTANCE=0 \
     LOCATION=CockburnSound \
-    MODEL=ZODA_6DOF \
+    MODEL=vectored-6dof \
     SPEEDUP=1 \
     VEHICLE=ArduSub
 
 EXPOSE 5760/tcp
 ENTRYPOINT ["/sitl_entrypoint.sh"]
-CMD ["/bin/bash", "-c", "Tools/autotest/sim_vehicle.py --vehicle=${VEHICLE} --instance=${INSTANCE} --location=${LOCATION} -w --frame=${MODEL} --no-rebuild --no-mavproxy --speedup=${SPEEDUP} --sim-address=0.0.0.0"]
+CMD ["/bin/bash", "-c", "Tools/autotest/sim_vehicle.py --vehicle=${VEHICLE} --instance=${INSTANCE} --location=${LOCATION} -w --frame=${MODEL} --no-rebuild --no-mavproxy --speedup=${SPEEDUP} --sim-address=0.0.0.0 --use-dir=/sitl/workdir --add-param-file=/sitl/init.params"]
