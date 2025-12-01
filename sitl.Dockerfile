@@ -63,7 +63,7 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
 # Runtime configuration
 ENV INSTANCE=0 \
     LOCATION=CockburnSound \
-    MODEL=vectored-6dof \
+    MODEL=vectored_6dof \
     SPEEDUP=1 \
     VEHICLE=ArduSub
 
