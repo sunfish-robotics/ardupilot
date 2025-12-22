@@ -400,11 +400,21 @@ void AP_Relay::set_pin_by_instance(uint8_t instance, bool value)
     if (initial_value != value) {
         set_pin(pin, value);
 #if HAL_LOGGING_ENABLED
-        AP::logger().Write("RELY", "TimeUS,Instance,State", "s#-", "F--", "QBB",
-                            AP_HAL::micros64(),
-                            instance,
-                            value);
-#endif
+// @LoggerMessage: RELY
+// @Description: Relay state
+// @Field: TimeUS: Time since system startup
+// @Field: Instance: relay instance number
+// @Field: State: current state
+        AP::logger().Write(
+            "RELY",
+            "TimeUS," "Instance," "State",
+            "s"       "#"         "-",
+            "F"       "-"         "-",
+            "Q"       "B"         "B",
+            AP_HAL::micros64(),
+            instance,
+            value);
+#endif  // HAL_LOGGING_ENABLED
     }
 }
 
@@ -533,6 +543,15 @@ void AP_Relay::set_pin(const int16_t pin, const bool value)
     hal.gpio->write(pin, value);
 }
 
+// Get GPIO pin from instance
+bool AP_Relay::get_pin_by_instance(uint8_t instance, uint8_t &pin) const
+{
+    if (instance >= ARRAY_SIZE(_params)) {
+        return false;
+    }
+    pin = _params[instance].pin;
+    return true;
+}
 // see if the relay is enabled
 bool AP_Relay::enabled(uint8_t instance) const 
 {

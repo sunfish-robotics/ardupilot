@@ -129,6 +129,8 @@ AP_GPS_UBLOX::~AP_GPS_UBLOX()
 #if GPS_MOVING_BASELINE
     delete rtcm3_parser;
 #endif
+
+    free(config_GNSS);
 }
 
 #if GPS_MOVING_BASELINE
@@ -653,12 +655,9 @@ AP_GPS_UBLOX::read(void)
     if (millis_now - _last_config_time >= _delay_time) {
         _request_next_config();
         _last_config_time = millis_now;
-        if (_unconfigured_messages) { // send the updates faster until fully configured
-            if (!havePvtMsg && (_unconfigured_messages & CONFIG_REQUIRED_INITIAL)) {
-                _delay_time = 300;
-            } else {
-                _delay_time = 750;
-            }
+        if (_unconfigured_messages) {
+            // send the updates faster until fully configured
+            _delay_time = 200;
         } else {
             _delay_time = 2000;
         }
@@ -1535,7 +1534,9 @@ AP_GPS_UBLOX::_parse_gps(void)
               _buffer.status.fix_type);
         _check_new_itow(_buffer.status.itow);
         if (havePvtMsg) {
-            _unconfigured_messages |= CONFIG_RATE_STATUS;
+            // when we have PVT we don't need status, just change the rate for STATUS to zero
+            _unconfigured_messages &= ~CONFIG_RATE_STATUS;
+            _configure_message_rate(CLASS_NAV, _msg_id, 0);
             break;
         }
         if (_buffer.status.fix_status & NAV_STATUS_FIX_VALID) {
@@ -1665,6 +1666,10 @@ AP_GPS_UBLOX::_parse_gps(void)
         Debug("MSG_PVT");
 
         havePvtMsg = true;
+
+        // if we have PVT we don't want MSG_STATUS
+        _unconfigured_messages &= ~CONFIG_RATE_STATUS;
+
         // position
         _check_new_itow(_buffer.pvt.itow);
         _last_pvt_itow = _buffer.pvt.itow;
@@ -2378,6 +2383,10 @@ uint8_t AP_GPS_UBLOX::populate_F9_gnss(void)
                 if (_hardware_variant == UBLOX_F9_ZED) {
                     config_GNSS[cfg_count++] = { ConfigKey::CFG_SIGNAL_GLO_L2_ENA, ena };
                 }
+                break;
+            case GNSS_NAVIC:
+                config_GNSS[cfg_count++] = { ConfigKey::CFG_SIGNAL_NAVIC_ENA, ena };
+                config_GNSS[cfg_count++] = { ConfigKey::CFG_SIGNAL_NAVIC_L5_ENA, ena };
                 break;
             // not supported or leave alone
             case GNSS_IMES:

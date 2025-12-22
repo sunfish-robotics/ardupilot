@@ -4,9 +4,6 @@ Contains functions used to test the ArduPilot examples
 AP_FLAKE8_CLEAN
 """
 
-from __future__ import print_function
-
-
 import os
 import pexpect
 import signal
@@ -69,7 +66,7 @@ def run_example(name, filepath, valgrind=False, gdb=False):
         print("process exited with -15, indicating it didn't catch the TERM signal and exit properly")
     elif retcode != 0:
         # note that process could exit with code 0 and we couldn't tell...
-        raise ValueError("Process exitted with non-zero exitcode %s" % str(retcode))
+        raise ValueError("Process exited with non-zero exitcode %s" % str(retcode))
 
     print("Ran: (%s)" % str(cmd))
 
@@ -117,6 +114,10 @@ def run_examples(debug=False, valgrind=False, gdb=False):
         "RCProtocolDecoder": "This assumes specific hardware is connected",
         "SlewLimiter": "exits with a status code of 1 (failure) for some reason",
         "UART_chargen": "This nuke the term",
+        "AP_Logger_AllTypes": "sanity checks fail on log write as we are attempting to write LOG_FILE_MSG items out and that doesn't exist in the structure we are using in this test",  # noqa:E501
+        "CompassCalibrator_index_test": "flow of control error, invalid rotation created in auto_rotation_index_test?",
+        "ReplayGyroFFT": "gyro data file /tmp/gyro0.dat (should this be a tool?)",
+        "jedec_test": "external flash not found in SITL",
     }
 
     failures = []

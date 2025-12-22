@@ -44,6 +44,8 @@
 #include "SIM_GPIO_LED_3.h"
 #include "SIM_GPIO_LED_RGB.h"
 
+#define MAX_SIM_INSTANCES 16
+
 namespace SITL {
 
 /*
@@ -67,6 +69,9 @@ public:
      */
     void set_instance(uint8_t _instance) {
         instance = _instance;
+        if (instance < MAX_SIM_INSTANCES) {
+            instances[instance] = this;
+        }
     }
 
     /*
@@ -175,9 +180,21 @@ public:
 
     ADSB *adsb;
 
+    // takes a PWM range between 1000 and 2000 and returns a floating
+    // point value between -1 and 1
+    float normalise_servo_input(uint16_t input) const {
+        return 2*((input-1000)/1000.0f - 0.5f);
+    }
+
     ServoModel servo_filter[16];
 
     float get_airspeed_pitot() const { return airspeed_pitot; }
+
+    /*
+      used by scripting to control simulated aircraft position
+     */
+    static bool set_pose(uint8_t instance, const Location &loc, const Quaternion &quat,
+                         const Vector3f &velocity_ef, const Vector3f &gyro_rads);
 
 protected:
     SIM *sitl;
@@ -207,6 +224,7 @@ protected:
     float battery_current;
     float local_ground_level;            // ground level at local position
     bool lock_step_scheduled;
+    bool flightaxis_sync_imus_to_frames; // causes the frame counter to be incremented on each timestep, IMUs will then update at the same rate
     uint32_t last_one_hz_ms;
 
     // battery model
@@ -405,6 +423,8 @@ private:
     GPIO_LED_RGB sim_ledrgb{8, 9, 10};  // pins to match sitl.h
 #endif
 
+    static Aircraft *instances[MAX_SIM_INSTANCES];
+    HAL_Semaphore pose_sem;
 };
 
 } // namespace SITL

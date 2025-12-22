@@ -48,7 +48,7 @@ public:
         k_param_can_protocol0,
         k_param_can_protocol1,
         k_param_can_protocol2,
-        k_param_sysid_this_mav,
+        k_param_sysid_this_mav_old,
         k_param_serial_manager,
         k_param_gps_mb_only_can_port,
         k_param_scripting,
@@ -79,6 +79,7 @@ public:
         k_param_networking_periph,
         k_param_rpm_sensor,
         k_param_g_rcin,
+        k_param_actuator_telem,
         k_param_sitl,
         k_param_ahrs,
         k_param_battery_balance,
@@ -99,6 +100,10 @@ public:
         k_param_esc_extended_telem_rate,
         k_param_imu_sample_rate,
         k_param_imu,
+        k_param_dac,
+        k_param__gcs,
+        k_param_battery_tag,
+        k_param_servo_command_timeout_ms,
     };
 
     AP_Int16 format_version;
@@ -113,10 +118,10 @@ public:
     AP_Int8 can_slcan_cport;
 #endif
 
-#ifdef HAL_PERIPH_ENABLE_BUZZER_WITHOUT_NOTIFY
+#if AP_PERIPH_BUZZER_WITHOUT_NOTIFY_ENABLED
     AP_Int8 buzz_volume;
 #endif
-#ifdef AP_PERIPH_HAVE_LED_WITHOUT_NOTIFY
+#if AP_PERIPH_HAVE_LED_WITHOUT_NOTIFY
     AP_Int8 led_brightness;
 #endif
 #if AP_PERIPH_BARO_ENABLED
@@ -132,7 +137,7 @@ public:
     AP_Int16 rangefinder_max_rate;
 #endif
 
-#ifdef HAL_PERIPH_ENABLE_PROXIMITY
+#if AP_PERIPH_PROXIMITY_ENABLED
     AP_Int32 proximity_baud;
     AP_Int8 proximity_port;
     AP_Int16 proximity_max_rate;
@@ -144,12 +149,12 @@ public:
     AP_Int8 adsb_port;
 #endif
 
-#ifdef HAL_PERIPH_ENABLE_PWM_HARDPOINT
+#if AP_PERIPH_PWM_HARDPOINT_ENABLED
     AP_Int16 hardpoint_id;
     AP_Int8 hardpoint_rate;
 #endif
 
-#if AP_PERIPH_HOBBYWING_ESC_ENABLED || defined(HAL_PERIPH_ENABLE_ESC_APD)
+#if AP_PERIPH_HOBBYWING_ESC_ENABLED || AP_PERIPH_ESC_APD_ENABLED
     #if defined ESC_NUMBERS
         #error "ESC_NUMBERS should not have been previously defined"
     #endif
@@ -190,6 +195,7 @@ public:
     AP_Int16 esc_extended_telem_rate;
 #endif
 #endif
+    AP_Int16 servo_command_timeout_ms;
 #endif
 
     AP_Int8 debug;
@@ -198,10 +204,6 @@ public:
 
 #if HAL_LOGGING_ENABLED
     AP_Int32        log_bitmask;
-#endif
-
-#if HAL_GCS_ENABLED
-    AP_Int16 sysid_this_mav;
 #endif
 
 #if AP_PERIPH_BATTERY_ENABLED
@@ -221,7 +223,7 @@ public:
     AP_Int8 can_mirror_ports;
 #endif // HAL_PERIPH_CAN_MIRROR
 
-#ifdef HAL_PERIPH_ENABLE_DEVICE_TEMPERATURE
+#if AP_PERIPH_DEVICE_TEMPERATURE_ENABLED
     AP_Int8 temperature_msg_rate;
 #endif
 

@@ -29,8 +29,8 @@
 #define HAL_FLASH_ALLOW_UPDATE 0
 #endif
 
-#ifndef BOARD_FLASH_SIZE
-#define BOARD_FLASH_SIZE 4096
+#ifndef HAL_PROGRAM_SIZE_LIMIT_KB
+#define HAL_PROGRAM_SIZE_LIMIT_KB 4096
 #endif
 
 #ifndef HAL_STORAGE_SIZE
@@ -42,7 +42,6 @@
 #define HAL_BOARD_TERRAIN_DIRECTORY "terrain"
 #define HAL_PARAM_DEFAULTS_PATH nullptr
 #define HAL_INS_DEFAULT HAL_INS_NONE
-#define HAL_BARO_DEFAULT HAL_BARO_NONE
 
 // simulated LEDs are disabled by default as they lead to a large
 // amount of SIM_GPIO_MASK mavlink traffic
