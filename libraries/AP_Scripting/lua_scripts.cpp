@@ -248,6 +248,9 @@ void lua_scripts::create_sandbox(lua_State *L) {
     lua_pushstring(L, "package");
     luaopen_package(L);
     lua_settable(L, -3);
+    lua_pushstring(L, "coroutine");
+    luaopen_coroutine(L);
+    lua_settable(L, -3);
 
     load_generated_sandbox(L);
 }
