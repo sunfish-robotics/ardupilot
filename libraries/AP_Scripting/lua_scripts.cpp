@@ -248,9 +248,6 @@ void lua_scripts::create_sandbox(lua_State *L) {
     lua_pushstring(L, "package");
     luaopen_package(L);
     lua_settable(L, -3);
-    lua_pushstring(L, "coroutine");
-    luaopen_coroutine(L);
-    lua_settable(L, -3);
 
     load_generated_sandbox(L);
 }
@@ -416,7 +413,7 @@ void lua_scripts::remove_script(lua_State *L, script_info *script) {
         WITH_SEMAPHORE(crc_sem);
         running_checksum ^= script->crc;
     }
-    
+
     if (L != nullptr) {
         // state could be null if we are force killing all scripts
         luaL_unref(L, LUA_REGISTRYINDEX, script->env_ref);

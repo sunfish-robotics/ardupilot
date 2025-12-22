@@ -57,8 +57,9 @@ RUN export SITL_ENTRYPOINT="/tmp/sitl_entrypoint.sh" && \
 
 RUN mkdir -p /sitl/workdir && touch /sitl/init.params
 
+# Healthy when we are waiting for a connection and there were no segmentation faults
 HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
-    CMD grep -q "Waiting for connection ...." /tmp/ArduSub.log || exit 1
+    CMD test -r /tmp/ArduSub.log && grep -Fq "Waiting for connection ...." /tmp/ArduSub.log && ! grep -Fq "ERROR: segmentation fault - aborting" /tmp/ArduSub.log
 
 # Runtime configuration
 ENV INSTANCE=0 \
