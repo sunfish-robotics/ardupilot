@@ -467,7 +467,7 @@ static const luaL_Reg base_funcs[] = {
 #endif
   {"next", luaB_next},
   {"pairs", luaB_pairs},
-  {"pcall", luaB_pcall},
+  // {"pcall", luaB_pcall},
 //  {"print", luaB_print},
   {"rawequal", luaB_rawequal},
   {"rawlen", luaB_rawlen},
@@ -478,10 +478,10 @@ static const luaL_Reg base_funcs[] = {
   {"tonumber", luaB_tonumber},
   {"tostring", luaB_tostring},
   {"type", luaB_type},
-  {"xpcall", luaB_xpcall},
+  // {"xpcall", luaB_xpcall},
   /* placeholders */
-  {"_G", NULL},
-  {"_VERSION", NULL},
+  // {"_G", NULL},
+  // {"_VERSION", NULL},
   {NULL, NULL}
 };
 
