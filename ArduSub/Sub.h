@@ -565,6 +565,26 @@ private:
     bool get_wp_bearing_deg(float &bearing) const override;
     bool get_wp_crosstrack_error_m(float &xtrack_error) const override;
 
+#if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
+    // guided position target for scripting/external control
+    bool set_target_location(const Location& target_loc) override;
+#endif
+
+#if AP_SCRIPTING_ENABLED
+    // guided velocity target for scripting (NED m/s)
+    bool set_target_velocity_NED(const Vector3f& vel_ned) override;
+
+    // guided position/velocity/attitude targets for scripting
+    bool set_target_pos_NED(const Vector3f& target_pos, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool yaw_relative, bool terrain_alt) override;
+    bool set_target_posvel_NED(const Vector3f& target_pos, const Vector3f& target_vel) override;
+    bool set_target_posvelaccel_NED(const Vector3f& target_pos, const Vector3f& target_vel, const Vector3f& target_accel, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool yaw_relative) override;
+    bool set_target_velaccel_NED(const Vector3f& target_vel, const Vector3f& target_accel, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool yaw_relative) override;
+    bool set_target_angle_and_climbrate(float roll_deg, float pitch_deg, float yaw_deg, float climb_rate_ms, bool use_yaw_rate, float yaw_rate_degs) override;
+
+    // EKF failsafe status (for Lua)
+    bool has_ekf_failsafed() const override;
+#endif
+
     enum Failsafe_Action {
         Failsafe_Action_None    = 0,
         Failsafe_Action_Warn    = 1,
