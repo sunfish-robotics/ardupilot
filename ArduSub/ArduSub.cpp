@@ -380,6 +380,137 @@ bool Sub::get_wp_crosstrack_error_m(float &xtrack_error) const
     return true;
 }
 
+#if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
+bool Sub::set_target_location(const Location& target_loc)
+{
+    // exit if vehicle is not in Guided mode or Auto-Guided mode
+    if (!flightmode->in_guided_mode()) {
+        return false;
+    }
+
+    // match DO_REPOSITION behaviour: reject targets that sanitize() would modify
+    Location request_location{target_loc};
+    if (request_location.sanitize(current_loc)) {
+        return false;
+    }
+
+    return mode_guided.guided_set_destination(request_location);
+}
+#endif // AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
+
+#if AP_SCRIPTING_ENABLED
+bool Sub::set_target_velocity_NED(const Vector3f& vel_ned)
+{
+    // exit if vehicle is not in Guided mode or Auto-Guided mode
+    if (!flightmode->in_guided_mode()) {
+        return false;
+    }
+
+    // Lua API uses NED in m/s. Sub guided velocity uses NEU in cm/s.
+    const Vector3f vel_neu_cms(vel_ned.x * 100.0f, vel_ned.y * 100.0f, -vel_ned.z * 100.0f);
+    mode_guided.guided_set_velocity(vel_neu_cms);
+    return true;
+}
+
+bool Sub::set_target_pos_NED(const Vector3f& target_pos, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool yaw_relative, bool terrain_alt)
+{
+    // exit if vehicle is not in Guided mode or Auto-Guided mode
+    if (!flightmode->in_guided_mode()) {
+        return false;
+    }
+
+    // ArduSub guided position targets are relative to EKF origin (NEU, cm) and do not support terrain-relative altitude via this API
+    if (terrain_alt) {
+        return false;
+    }
+
+    const Vector3f pos_neu_cm(target_pos.x * 100.0f, target_pos.y * 100.0f, -target_pos.z * 100.0f);
+    return mode_guided.guided_set_destination(pos_neu_cm,
+                                              use_yaw,
+                                              yaw_deg * 100.0f,
+                                              use_yaw_rate,
+                                              yaw_rate_degs * 100.0f,
+                                              yaw_relative);
+}
+
+bool Sub::set_target_posvel_NED(const Vector3f& target_pos, const Vector3f& target_vel)
+{
+    // exit if vehicle is not in Guided mode or Auto-Guided mode
+    if (!flightmode->in_guided_mode()) {
+        return false;
+    }
+
+    const Vector3f pos_neu_cm(target_pos.x * 100.0f, target_pos.y * 100.0f, -target_pos.z * 100.0f);
+    const Vector3f vel_neu_cms(target_vel.x * 100.0f, target_vel.y * 100.0f, -target_vel.z * 100.0f);
+    return mode_guided.guided_set_destination_posvel(pos_neu_cm, vel_neu_cms);
+}
+
+bool Sub::set_target_posvelaccel_NED(const Vector3f& target_pos, const Vector3f& target_vel, const Vector3f& target_accel, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool yaw_relative)
+{
+    // exit if vehicle is not in Guided mode or Auto-Guided mode
+    if (!flightmode->in_guided_mode()) {
+        return false;
+    }
+
+    // ArduSub guided posvel control does not currently use acceleration targets; ignore target_accel
+    (void)target_accel;
+
+    const Vector3f pos_neu_cm(target_pos.x * 100.0f, target_pos.y * 100.0f, -target_pos.z * 100.0f);
+    const Vector3f vel_neu_cms(target_vel.x * 100.0f, target_vel.y * 100.0f, -target_vel.z * 100.0f);
+    return mode_guided.guided_set_destination_posvel(pos_neu_cm,
+                                                     vel_neu_cms,
+                                                     use_yaw,
+                                                     yaw_deg * 100.0f,
+                                                     use_yaw_rate,
+                                                     yaw_rate_degs * 100.0f,
+                                                     yaw_relative);
+}
+
+bool Sub::set_target_velaccel_NED(const Vector3f& target_vel, const Vector3f& target_accel, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool yaw_relative)
+{
+    // exit if vehicle is not in Guided mode or Auto-Guided mode
+    if (!flightmode->in_guided_mode()) {
+        return false;
+    }
+
+    // ArduSub guided velocity control does not currently use acceleration targets; ignore target_accel
+    (void)target_accel;
+
+    const Vector3f vel_neu_cms(target_vel.x * 100.0f, target_vel.y * 100.0f, -target_vel.z * 100.0f);
+    mode_guided.guided_set_velocity(vel_neu_cms,
+                                    use_yaw,
+                                    yaw_deg * 100.0f,
+                                    use_yaw_rate,
+                                    yaw_rate_degs * 100.0f,
+                                    yaw_relative);
+    return true;
+}
+
+bool Sub::set_target_angle_and_climbrate(float roll_deg, float pitch_deg, float yaw_deg, float climb_rate_ms, bool use_yaw_rate, float yaw_rate_degs)
+{
+    // exit if vehicle is not in Guided mode or Auto-Guided mode
+    if (!flightmode->in_guided_mode()) {
+        return false;
+    }
+
+    // ArduSub guided angle control currently accepts an attitude target and climb rate.
+    // Yaw-rate targeting is not supported via ModeGuided::guided_set_angle().
+    (void)use_yaw_rate;
+    (void)yaw_rate_degs;
+
+    Quaternion q;
+    q.from_euler(radians(roll_deg), radians(pitch_deg), radians(yaw_deg));
+
+    mode_guided.guided_set_angle(q, climb_rate_ms * 100.0f);
+    return true;
+}
+
+bool Sub::has_ekf_failsafed() const
+{
+    return failsafe.ekf;
+}
+#endif // AP_SCRIPTING_ENABLED
+
 #if AP_STATS_ENABLED
 /*
   update AP_Stats
