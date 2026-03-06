@@ -68,6 +68,8 @@ ENV INSTANCE=0 \
     SPEEDUP=1 \
     VEHICLE=ArduSub
 
+RUN mkdir -p /sitl/workdir && touch /sitl/sitl.params
+
 EXPOSE 5760/tcp
 ENTRYPOINT ["/sitl_entrypoint.sh"]
 CMD ["/bin/bash", "-c", "Tools/autotest/sim_vehicle.py --vehicle=${VEHICLE} --instance=${INSTANCE} --location=${LOCATION} -w --frame=${MODEL} --no-rebuild --no-mavproxy --speedup=${SPEEDUP} --sim-address=0.0.0.0 --use-dir=/sitl/workdir --add-param-file=/sitl/init.params"]
