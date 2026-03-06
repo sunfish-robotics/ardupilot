@@ -23,152 +23,163 @@
 #include <stdio.h>
 #include <errno.h>
 
-namespace SITL {
-
-Gazebo::Gazebo(const char *frame_str) :
-    Aircraft(frame_str),
-    last_timestamp(0),
-    socket_sitl{true}
+namespace SITL
 {
-    fprintf(stdout, "Starting SITL Gazebo\n");
-}
 
-/*
-  Create and set in/out socket
-*/
-void Gazebo::set_interface_ports(const char* address, const int port_in, const int port_out)
-{
-    // try to bind to a specific port so that if we restart ArduPilot
-    // Gazebo keeps sending us packets. Not strictly necessary but
-    // useful for debugging
-    if (!socket_sitl.bind("0.0.0.0", port_in)) {
-        fprintf(stderr, "SITL: socket in bind failed on sim in : %d  - %s\n", port_in, strerror(errno));
-        fprintf(stderr, "Aborting launch...\n");
-        exit(1);
-    }
-    printf("Bind %s:%d for SITL in\n", "127.0.0.1", port_in);
-    socket_sitl.reuseaddress();
-    socket_sitl.set_blocking(false);
-
-    _gazebo_address = address;
-    _gazebo_port = port_out;
-    printf("Setting Gazebo interface to %s:%d \n", _gazebo_address, _gazebo_port);
-}
-
-/*
-  decode and send servos
-*/
-void Gazebo::send_servos(const struct sitl_input &input)
-{
-    servo_packet pkt;
-    // should rename servo_command
-    // 16 because struct sitl_input.servos is 16 large in SIM_Aircraft.h
-    for (unsigned i = 0; i < 16; ++i)
+    Gazebo::Gazebo(const char *frame_str) : Aircraft(frame_str),
+                                            last_timestamp(0),
+                                            socket_sitl{true}
     {
-      pkt.motor_speed[i] = (input.servos[i]-1000) / 1000.0f;
+        fprintf(stdout, "Starting SITL Gazebo\n");
     }
-    socket_sitl.sendto(&pkt, sizeof(pkt), _gazebo_address, _gazebo_port);
-}
-
-/*
-  receive an update from the FDM
-  This is a blocking function
- */
-void Gazebo::recv_fdm(const struct sitl_input &input)
-{
-    fdm_packet pkt;
 
     /*
-      we re-send the servo packet every 0.1 seconds until we get a
-      reply. This allows us to cope with some packet loss to the FDM
+      Create and set in/out socket
+    */
+    void Gazebo::set_interface_ports(const char *address, const int port_in, const int port_out)
+    {
+        // try to bind to a specific port so that if we restart ArduPilot
+        // Gazebo keeps sending us packets. Not strictly necessary but
+        // useful for debugging
+        if (!socket_sitl.bind("0.0.0.0", port_in))
+        {
+            fprintf(stderr, "SITL: socket in bind failed on sim in : %d  - %s\n", port_in, strerror(errno));
+            fprintf(stderr, "Aborting launch...\n");
+            exit(1);
+        }
+        printf("Bind %s:%d for SITL in\n", "127.0.0.1", port_in);
+        socket_sitl.reuseaddress();
+        socket_sitl.set_blocking(false);
+
+        _gazebo_address = address;
+        _gazebo_port = port_out;
+        printf("Setting Gazebo interface to %s:%d \n", _gazebo_address, _gazebo_port);
+    }
+
+    // Magic value expected by ardupilot_gazebo plugin for 16-channel servo packet
+    static constexpr uint16_t GAZEBO_SERVO_MAGIC_16 = 18458;
+
+    /*
+      decode and send servos (packet format must match ardupilot_gazebo servo_packet_16)
+    */
+    void Gazebo::send_servos(const struct sitl_input &input)
+    {
+        servo_packet pkt{};
+        pkt.magic = GAZEBO_SERVO_MAGIC_16;
+        pkt.frame_rate = 0; // plugin can use for tuning; 0 = not specified
+        pkt.frame_count = _frame_count++;
+        for (unsigned i = 0; i < 16; ++i)
+        {
+            pkt.pwm[i] = input.servos[i];
+        }
+        socket_sitl.sendto(&pkt, sizeof(pkt), _gazebo_address, _gazebo_port);
+    }
+
+    /*
+      receive an update from the FDM
+      This is a blocking function
      */
-    while (socket_sitl.recv(&pkt, sizeof(pkt), 100) != sizeof(pkt)) {
-        send_servos(input);
-        // Reset the timestamp after a long disconnection, also catch gazebo reset
-        if (get_wall_time_us() > last_wall_time_us + GAZEBO_TIMEOUT_US) {
-            last_timestamp = 0;
-        }
-    }
+    void Gazebo::recv_fdm(const struct sitl_input &input)
+    {
+        fdm_packet pkt;
 
-    const double deltat = pkt.timestamp - last_timestamp;  // in seconds
-    if (deltat < 0) {  // don't use old packet
-        time_now_us += 1;
-        return;
-    }
-    // get imu stuff
-    accel_body = Vector3f(static_cast<float>(pkt.imu_linear_acceleration_xyz[0]),
-                          static_cast<float>(pkt.imu_linear_acceleration_xyz[1]),
-                          static_cast<float>(pkt.imu_linear_acceleration_xyz[2]));
-
-    gyro = Vector3f(static_cast<float>(pkt.imu_angular_velocity_rpy[0]),
-                    static_cast<float>(pkt.imu_angular_velocity_rpy[1]),
-                    static_cast<float>(pkt.imu_angular_velocity_rpy[2]));
-
-    // compute dcm from imu orientation
-    Quaternion quat(static_cast<float>(pkt.imu_orientation_quat[0]),
-                    static_cast<float>(pkt.imu_orientation_quat[1]),
-                    static_cast<float>(pkt.imu_orientation_quat[2]),
-                    static_cast<float>(pkt.imu_orientation_quat[3]));
-    quat.rotation_matrix(dcm);
-
-    velocity_ef = Vector3f(static_cast<float>(pkt.velocity_xyz[0]),
-                           static_cast<float>(pkt.velocity_xyz[1]),
-                           static_cast<float>(pkt.velocity_xyz[2]));
-
-    position = Vector3d(pkt.position_xyz[0],
-                        pkt.position_xyz[1],
-                        pkt.position_xyz[2]);
-    position.xy() += origin.get_distance_NE_double(home);
-
-    // auto-adjust to simulation frame rate
-    time_now_us += static_cast<uint64_t>(deltat * 1.0e6);
-
-    if (deltat < 0.01 && deltat > 0) {
-        adjust_frame_time(static_cast<float>(1.0/deltat));
-    }
-    last_timestamp = pkt.timestamp;
-
-}
-
-/*
-  Drain remaining data on the socket to prevent phase lag.
- */
-void Gazebo::drain_sockets()
-{
-    const uint16_t buflen = 1024;
-    char buf[buflen];
-    ssize_t received;
-    errno = 0;
-    do {
-        received = socket_sitl.recv(buf, buflen, 0);
-        if (received < 0) {
-            if (errno != EAGAIN && errno != EWOULDBLOCK && errno != 0) {
-                fprintf(stderr, "error recv on socket in: %s \n",
-                        strerror(errno));
+        /*
+          we re-send the servo packet every 0.1 seconds until we get a
+          reply. This allows us to cope with some packet loss to the FDM
+         */
+        while (socket_sitl.recv(&pkt, sizeof(pkt), 100) != sizeof(pkt))
+        {
+            send_servos(input);
+            // Reset the timestamp after a long disconnection, also catch gazebo reset
+            if (get_wall_time_us() > last_wall_time_us + GAZEBO_TIMEOUT_US)
+            {
+                last_timestamp = 0;
             }
-        } else {
-            // fprintf(stderr, "received from control socket: %s\n", buf);
         }
-    } while (received > 0);
 
-}
+        const double deltat = pkt.timestamp - last_timestamp; // in seconds
+        if (deltat < 0)
+        { // don't use old packet
+            time_now_us += 1;
+            return;
+        }
+        // get imu stuff
+        accel_body = Vector3f(static_cast<float>(pkt.imu_linear_acceleration_xyz[0]),
+                              static_cast<float>(pkt.imu_linear_acceleration_xyz[1]),
+                              static_cast<float>(pkt.imu_linear_acceleration_xyz[2]));
 
-/*
-  update the Gazebo simulation by one time step
- */
-void Gazebo::update(const struct sitl_input &input)
-{
-    send_servos(input);
-    recv_fdm(input);
-    update_position();
+        gyro = Vector3f(static_cast<float>(pkt.imu_angular_velocity_rpy[0]),
+                        static_cast<float>(pkt.imu_angular_velocity_rpy[1]),
+                        static_cast<float>(pkt.imu_angular_velocity_rpy[2]));
 
-    time_advance();
-    // update magnetic field
-    update_mag_field_bf();
-    drain_sockets();
-}
+        // compute dcm from imu orientation
+        Quaternion quat(static_cast<float>(pkt.imu_orientation_quat[0]),
+                        static_cast<float>(pkt.imu_orientation_quat[1]),
+                        static_cast<float>(pkt.imu_orientation_quat[2]),
+                        static_cast<float>(pkt.imu_orientation_quat[3]));
+        quat.rotation_matrix(dcm);
 
-}  // namespace SITL
+        velocity_ef = Vector3f(static_cast<float>(pkt.velocity_xyz[0]),
+                               static_cast<float>(pkt.velocity_xyz[1]),
+                               static_cast<float>(pkt.velocity_xyz[2]));
 
+        position = Vector3d(pkt.position_xyz[0],
+                            pkt.position_xyz[1],
+                            pkt.position_xyz[2]);
+        position.xy() += origin.get_distance_NE_double(home);
 
-#endif  // HAL_SIM_GAZEBO_ENABLED
+        // auto-adjust to simulation frame rate
+        time_now_us += static_cast<uint64_t>(deltat * 1.0e6);
+
+        if (deltat < 0.01 && deltat > 0)
+        {
+            adjust_frame_time(static_cast<float>(1.0 / deltat));
+        }
+        last_timestamp = pkt.timestamp;
+    }
+
+    /*
+      Drain remaining data on the socket to prevent phase lag.
+     */
+    void Gazebo::drain_sockets()
+    {
+        const uint16_t buflen = 1024;
+        char buf[buflen];
+        ssize_t received;
+        errno = 0;
+        do
+        {
+            received = socket_sitl.recv(buf, buflen, 0);
+            if (received < 0)
+            {
+                if (errno != EAGAIN && errno != EWOULDBLOCK && errno != 0)
+                {
+                    fprintf(stderr, "error recv on socket in: %s \n",
+                            strerror(errno));
+                }
+            }
+            else
+            {
+                // fprintf(stderr, "received from control socket: %s\n", buf);
+            }
+        } while (received > 0);
+    }
+
+    /*
+      update the Gazebo simulation by one time step
+     */
+    void Gazebo::update(const struct sitl_input &input)
+    {
+        send_servos(input);
+        recv_fdm(input);
+        update_position();
+
+        time_advance();
+        // update magnetic field
+        update_mag_field_bf();
+        drain_sockets();
+    }
+
+} // namespace SITL
+
+#endif // HAL_SIM_GAZEBO_ENABLED

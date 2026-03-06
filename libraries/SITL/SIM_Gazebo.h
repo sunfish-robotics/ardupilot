@@ -28,41 +28,49 @@
 
 #include "SIM_Aircraft.h"
 #include <AP_HAL/utility/Socket_native.h>
+#include <cstdint>
 
-namespace SITL {
+namespace SITL
+{
 
-/*
-  Gazebo simulator
- */
-class Gazebo : public Aircraft {
-public:
+  /*
+    Gazebo simulator
+   */
+  class Gazebo : public Aircraft
+  {
+  public:
     Gazebo(const char *frame_str);
 
     /* update model by one time step */
     void update(const struct sitl_input &input) override;
 
     /* static object creator */
-    static Aircraft *create(const char *frame_str) {
-        return NEW_NOTHROW Gazebo(frame_str);
+    static Aircraft *create(const char *frame_str)
+    {
+      return NEW_NOTHROW Gazebo(frame_str);
     }
 
     /*  Create and set in/out socket for Gazebo simulator */
-    void set_interface_ports(const char* address, const int port_in, const int port_out) override;
+    void set_interface_ports(const char *address, const int port_in, const int port_out) override;
 
-private:
+  private:
     /*
-      packet sent to Gazebo
+      packet sent to Gazebo (must match ardupilot_gazebo plugin servo_packet_16)
      */
-    struct servo_packet {
-      // size matches sitl_input upstream
-      float motor_speed[16];
+    struct servo_packet
+    {
+      uint16_t magic; // 18458 for 16-channel
+      uint16_t frame_rate;
+      uint32_t frame_count;
+      uint16_t pwm[16];
     };
 
     /*
       reply packet sent from Gazebo to ArduPilot
      */
-    struct fdm_packet {
-      double timestamp;  // in seconds
+    struct fdm_packet
+    {
+      double timestamp; // in seconds
       double imu_angular_velocity_rpy[3];
       double imu_linear_acceleration_xyz[3];
       double imu_orientation_quat[4];
@@ -75,14 +83,14 @@ private:
     void drain_sockets();
 
     double last_timestamp;
+    uint32_t _frame_count = 0;
 
     SocketAPM_native socket_sitl;
     const char *_gazebo_address = "127.0.0.1";
     int _gazebo_port = 9002;
     static const uint64_t GAZEBO_TIMEOUT_US = 5000000;
-};
+  };
 
-}  // namespace SITL
+} // namespace SITL
 
-
-#endif  // HAL_SIM_GAZEBO_ENABLED
+#endif // HAL_SIM_GAZEBO_ENABLED
