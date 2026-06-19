@@ -472,6 +472,10 @@ void AP_Periph_FW::update()
         dac.update();
 #endif
 
+#if AP_PERIPH_SUNK_SENSOR_ENABLED
+        sunk_sensor.update();
+#endif
+
         GCS_SEND_MESSAGE(MSG_HEARTBEAT);
         GCS_SEND_MESSAGE(MSG_SYS_STATUS);
     }

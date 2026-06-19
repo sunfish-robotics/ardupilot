@@ -41,6 +41,7 @@
 #include "rc_in.h"
 #include "batt_balance.h"
 #include "battery_tag.h"
+#include "sunk_sensor.h"
 #include "battery_bms.h"
 #include "actuator_telem.h"
 #include "networking.h"
@@ -413,6 +414,10 @@ public:
 
 #if AP_PERIPH_BATTERY_TAG_ENABLED
     BatteryTag battery_tag;
+#endif
+
+#if AP_PERIPH_SUNK_SENSOR_ENABLED
+    SunkSensor sunk_sensor;
 #endif
 
 #if AP_PERIPH_BATTERY_BMS_ENABLED
