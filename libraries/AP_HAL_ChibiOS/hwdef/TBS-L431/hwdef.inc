@@ -15,7 +15,7 @@ define HAL_STORAGE_SIZE 800
 STM32_ST_USE_TIMER 15
 define CH_CFG_ST_RESOLUTION 16
 
-# board ID for firmware load
+# board ID. See Tools/AP_Bootloader/board_types.txt
 APJ_BOARD_ID AP_HW_TBS_L431_PERIPH
 
 # use LSE clock source
@@ -26,7 +26,6 @@ env AP_PERIPH 1
 STDOUT_SERIAL SD1
 STDOUT_BAUDRATE 57600
 
-define HAL_NO_GPIO_IRQ
 define SERIAL_BUFFERS_SIZE 512
 define PORT_INT_REQUIRED_STACK 64
 
@@ -81,4 +80,3 @@ define HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT 0
 # to uncompress the bootloader at runtime
 env ROMFS_UNCOMPRESSED True
 
-define HAL_RCIN_THREAD_ENABLED 1

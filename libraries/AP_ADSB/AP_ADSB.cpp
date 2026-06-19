@@ -150,7 +150,7 @@ const AP_Param::GroupInfo AP_ADSB::var_info[] = {
 
     // @Param: LIST_ALT
     // @DisplayName: ADSB vehicle list altitude filter
-    // @Description: ADSB vehicle list altitude filter. Vehicles detected above this altitude will be completely ignored. They will not show up in the SRx_ADSB stream to the GCS and will not be considered in any avoidance calculations. A value of 0 will disable this filter.
+    // @Description: ADSB vehicle list altitude filter. Vehicles detected more than this altitude above our own altitude will be completely ignored. They will not show up in the SRx_ADSB stream to the GCS and will not be considered in any avoidance calculations. A value of 0 will disable this filter.
     // @Range: 0 32767
     // @User: Advanced
     // @Units: m
@@ -343,7 +343,7 @@ void AP_ADSB::update(void)
 
     const AP_GPS &gps = AP::gps();
 
-    loc.fix_type = (AP_GPS_FixType)gps.status();
+    loc.fix_type = gps.status();
     loc.epoch_us = gps.time_epoch_usec();
 #if AP_RTC_ENABLED
     loc.have_epoch_from_rtc_us = AP::rtc().get_utc_usec(loc.epoch_from_rtc_us);

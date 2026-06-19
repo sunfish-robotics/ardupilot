@@ -16,9 +16,11 @@
   simulator connector for ardupilot version of last_letter
 */
 
-#include "SIM_last_letter.h"
+#include "SIM_config.h"
 
-#if HAL_SIM_LAST_LETTER_ENABLED
+#if AP_SIM_LAST_LETTER_ENABLED
+
+#include "SIM_last_letter.h"
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -102,9 +104,12 @@ void last_letter::recv_fdm(const struct sitl_input &input)
     accel_body = Vector3f(pkt.xAccel, pkt.yAccel, pkt.zAccel);
     gyro = Vector3f(pkt.rollRate, pkt.pitchRate, pkt.yawRate);
     velocity_ef = Vector3f(pkt.speedN, pkt.speedE, pkt.speedD);
-    location.lat = pkt.latitude * 1.0e7;
-    location.lng = pkt.longitude * 1.0e7;
-    location.alt = pkt.altitude*1.0e2;
+    location = {
+        int32_t(pkt.latitude * 1.0e7),
+        int32_t(pkt.longitude * 1.0e7),
+        int32_t(pkt.altitude*1.0e2),
+        Location::AltFrame::ABSOLUTE
+    };
     dcm.from_euler(pkt.roll, pkt.pitch, pkt.yaw);
 
     airspeed = pkt.airspeed;
@@ -128,6 +133,7 @@ void last_letter::update(const struct sitl_input &input)
 {
     send_servos(input);
     recv_fdm(input);
+    update_battery();
     sync_frame_time();
 
     update_position();
@@ -138,4 +144,4 @@ void last_letter::update(const struct sitl_input &input)
 
 } // namespace SITL
 
-#endif  // HAL_SIM_LAST_LETTER_ENABLED
+#endif  // AP_SIM_LAST_LETTER_ENABLED

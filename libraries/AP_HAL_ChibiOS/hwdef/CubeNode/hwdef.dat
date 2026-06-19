@@ -1,5 +1,5 @@
-# hw definition file for processing by chibios_hwdef.py
-# for H757
+# hw definition file for processing by chibios_hwdef.py for H757
+# CubeNode pin descriptions can be found at https://docs.cubepilot.org/user-guides/cubenode/pin-descriptions
 
 # MCU class and specific type
 MCU STM32H7xx STM32H757xx
@@ -8,8 +8,8 @@ MCU STM32H7xx STM32H757xx
 define CORE_CM7
 define SMPS_PWR
 
-# board ID for firmware load
-APJ_BOARD_ID 1079
+# board ID. See Tools/AP_Bootloader/board_types.txt
+APJ_BOARD_ID AP_HW_CUBENODE
 
 # setup build for a peripheral firmware
 env AP_PERIPH 1
