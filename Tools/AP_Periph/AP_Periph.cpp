@@ -84,7 +84,10 @@ const struct LogStructure AP_Periph_FW::log_structure[] = {
 
 void AP_Periph_FW::init()
 {
-    
+#if AP_SIM_ENABLED
+    sitl.init();
+#endif
+
     // always run with watchdog enabled. This should have already been
     // setup by the bootloader, but if not then enable now
 #ifndef DISABLE_WATCHDOG
@@ -144,7 +147,7 @@ void AP_Periph_FW::init()
     node_stats.init();
 #endif
 
-#ifdef HAL_PERIPH_ENABLE_SERIAL_OPTIONS
+#if AP_PERIPH_SERIAL_OPTIONS_ENABLED
     serial_options.init();
 #endif
 
@@ -159,6 +162,10 @@ void AP_Periph_FW::init()
         gps.init();
     }
 #endif  // AP_PERIPH_GPS_ENABLED
+
+#if AP_DAC_ENABLED
+    dac.init();
+#endif
 
 #if AP_PERIPH_MAG_ENABLED
     compass.init();
@@ -254,7 +261,7 @@ void AP_Periph_FW::init()
     }
 #endif
 
-#ifdef HAL_PERIPH_ENABLE_PROXIMITY
+#if AP_PERIPH_PROXIMITY_ENABLED
     if (proximity.get_type(0) != AP_Proximity::Type::None && g.proximity_port >= 0) {
         auto *uart = hal.serial(g.proximity_port);
         if (uart != nullptr) {
@@ -265,7 +272,7 @@ void AP_Periph_FW::init()
     }
 #endif
 
-#ifdef HAL_PERIPH_ENABLE_PWM_HARDPOINT
+#if AP_PERIPH_PWM_HARDPOINT_ENABLED
     pwm_hardpoint_init();
 #endif
 
@@ -273,7 +280,7 @@ void AP_Periph_FW::init()
     hwesc_telem.init(hal.serial(HAL_PERIPH_HWESC_SERIAL_PORT));
 #endif
 
-#ifdef HAL_PERIPH_ENABLE_ESC_APD
+#if AP_PERIPH_ESC_APD_ENABLED
     for (uint8_t i = 0; i < ESC_NUMBERS; i++) {
         const uint8_t port = g.esc_serial_port[i];
         if (port < SERIALMANAGER_NUM_PORTS) { // skip bad ports
@@ -311,6 +318,11 @@ void AP_Periph_FW::init()
 #if AP_SCRIPTING_ENABLED
     scripting.init();
 #endif
+
+#if AP_PERIPH_ACTUATOR_TELEM_ENABLED
+    actuator_telem.init();
+#endif
+
     start_ms = AP_HAL::millis();
 }
 
@@ -456,6 +468,10 @@ void AP_Periph_FW::update()
         rcout_init_1Hz();
 #endif
 
+#if AP_DAC_ENABLED
+        dac.update();
+#endif
+
         GCS_SEND_MESSAGE(MSG_HEARTBEAT);
         GCS_SEND_MESSAGE(MSG_SYS_STATUS);
     }
@@ -544,6 +560,12 @@ void AP_Periph_FW::update()
 #endif
 #if AP_PERIPH_ADSB_ENABLED
     adsb_update();
+#endif
+#if AP_PERIPH_BATTERY_TAG_ENABLED
+    battery_tag.update();
+#endif
+#if AP_PERIPH_BATTERY_BMS_ENABLED
+    battery_bms.update();
 #endif
 }
 

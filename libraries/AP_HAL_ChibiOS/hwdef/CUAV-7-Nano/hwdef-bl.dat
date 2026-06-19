@@ -7,8 +7,8 @@ MCU STM32H7xx STM32H743xx
 # crystal frequency
 OSCILLATOR_HZ 16000000
 
-# board ID for firmware load
-APJ_BOARD_ID 7000
+# board ID. See Tools/AP_Bootloader/board_types.txt
+APJ_BOARD_ID AP_HW_CUAV-7-NANO
 
 # bootloader is installed at zero offset
 FLASH_RESERVE_START_KB 0
@@ -25,20 +25,12 @@ include ../include/network_bootloader.inc
 # Enable firmware checking
 define AP_CHECK_FIRMWARE_ENABLED 1
 
-
-# Disable CAN functionality
-define HAL_USE_CAN FALSE
-define HAL_NUM_CAN_IFACES 0
-define AP_CAN_SLCAN_ENABLED 0
-define HAL_WITH_UAVCAN 0
-define AP_CAN_ENABLED 0
-
 env OPTIMIZE -Os
 
 # order of UARTs (and USB)
 SERIAL_ORDER UART7 UART5 USART3
 
-# USB
+# USB disabled via network_bootloader.inc
 #PA11 OTG_FS_DM OTG1
 #PA12 OTG_FS_DP OTG1
 #PA9 VBUS INPUT OPENDRAIN
@@ -85,37 +77,3 @@ define HAL_STORAGE_SIZE 16384
 
 # enable DFU by default
 ENABLE_DFU_BOOT 1
-
-# support flashing from SD card:
-# power enable pins
-PC13  VDD_3V3_SD_CARD_EN OUTPUT HIGH
-
-# FATFS support:
-define CH_CFG_USE_MEMCORE 1
-define CH_CFG_USE_HEAP 1
-define CH_CFG_USE_SEMAPHORES 1
-define CH_CFG_USE_MUTEXES 1
-define CH_CFG_USE_DYNAMIC 1
-define CH_CFG_USE_WAITEXIT 1
-define CH_CFG_USE_REGISTRY 1
-define CH_CFG_USE_EVENTS 1
-
-# microSD support
-PD6  SDMMC2_CK SDMMC2
-PD7  SDMMC2_CMD SDMMC2
-PB14 SDMMC2_D0 SDMMC2
-PB15 SDMMC2_D1 SDMMC2
-PG11 SDMMC2_D2 SDMMC2
-PB4  SDMMC2_D3 SDMMC2
-define FATFS_HAL_DEVICE SDCD2
-
-DMA_PRIORITY SDMMC* USART6* ADC* UART* USART* SPI* TIM*
-
-# enable FAT filesystem support (needs a microSD defined via SDMMC)
-define HAL_OS_FATFS_IO 1
-
-define AP_BOOTLOADER_FLASH_FROM_SD_ENABLED 0
-
-# Thread configuration
-define CH_CFG_THREAD_EXTRA_FIELDS struct ch_thread *delete_next;
-

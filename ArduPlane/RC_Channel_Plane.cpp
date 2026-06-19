@@ -30,7 +30,7 @@ bool RC_Channels_Plane::has_valid_input() const
     if (plane.failsafe.throttle_counter != 0) {
         return false;
     }
-    return true;
+    return RC_Channels::has_valid_input();
 }
 
 RC_Channel * RC_Channels_Plane::get_arming_channel(void) const
@@ -180,6 +180,9 @@ void RC_Channel_Plane::init_aux_function(const RC_Channel::AUX_FUNC ch_option,
 #endif
 #if MODE_AUTOLAND_ENABLED
     case AUX_FUNC::AUTOLAND:
+#endif
+#if AP_PLANE_SYSTEMID_ENABLED
+    case AUX_FUNC::SYSTEMID:
 #endif
         break;
     case AUX_FUNC::SOARING:
@@ -467,6 +470,16 @@ bool RC_Channel_Plane::do_aux_function(const AuxFuncTrigger &trigger)
 #if AP_QUICKTUNE_ENABLED
     case AUX_FUNC::QUICKTUNE:
         plane.quicktune.update_switch_pos(ch_flag);
+        break;
+#endif
+
+#if AP_PLANE_SYSTEMID_ENABLED
+    case AUX_FUNC::SYSTEMID:
+        if (ch_flag == AuxSwitchPos::HIGH) {
+            plane.g2.systemid.start();
+        } else if (ch_flag == AuxSwitchPos::LOW) {
+            plane.g2.systemid.stop();
+        }
         break;
 #endif
 
