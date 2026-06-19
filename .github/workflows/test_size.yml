@@ -88,7 +88,7 @@ jobs:
           - config: disco
             toolchain: chibios
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.ref }}
           path: base_branch
@@ -178,7 +178,7 @@ jobs:
 
           echo [`date`] Built ${{ github.event.pull_request.base.ref }} with no versions
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           path: 'pr'
