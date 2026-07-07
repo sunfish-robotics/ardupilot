@@ -16,7 +16,7 @@ void SunkSensor::init(void){
     hal.gpio->write(HAL_GPIO_SUNK_SENSOR_OUTPUT, 0);
     hal.gpio->write(HAL_GPIO_SUNK_SENSOR_INPUT, 1); //enable with pullup
 
-}
+} 
 
 void SunkSensor::update(void)
 {
@@ -28,10 +28,16 @@ void SunkSensor::update(void)
     }
 
     if(sunk){
-        can_printf("sunk_sensor_update");
         buffer[0] = SUNFISH_INDICATION_SUNKSTATE_STATUS_SUNK;
         periph.canard_broadcast(SUNFISH_INDICATION_SUNKSTATE_SIGNATURE,
-            20069,
+            SUNFISH_INDICATION_SUNKSTATE_ID,
+            CANARD_TRANSFER_PRIORITY_LOW,
+            &buffer[0],
+            SUNFISH_INDICATION_SUNKSTATE_MAX_SIZE);
+    }else{
+        buffer[0] = SUNFISH_INDICATION_SUNKSTATE_STATUS_NOT_SUNK;
+        periph.canard_broadcast(SUNFISH_INDICATION_SUNKSTATE_SIGNATURE,
+            SUNFISH_INDICATION_SUNKSTATE_ID,
             CANARD_TRANSFER_PRIORITY_LOW,
             &buffer[0],
             SUNFISH_INDICATION_SUNKSTATE_MAX_SIZE);
