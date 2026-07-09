@@ -9,19 +9,14 @@ extern const AP_HAL::HAL &hal;
 uint8_t buffer[1];
 
 void SunkSensor::init(void){
-    //keep empty for now
-    hal.gpio->pinMode(HAL_GPIO_SUNK_SENSOR_OUTPUT, HAL_GPIO_OUTPUT);
     hal.gpio->pinMode(HAL_GPIO_SUNK_SENSOR_INPUT, HAL_GPIO_INPUT);
 
-    hal.gpio->write(HAL_GPIO_SUNK_SENSOR_OUTPUT, 0);
     hal.gpio->write(HAL_GPIO_SUNK_SENSOR_INPUT, 1); //enable with pullup
 
 } 
 
 void SunkSensor::update(void)
 {
-    hal.gpio->toggle(HAL_GPIO_SUNK_SENSOR_OUTPUT);
-
     bool sunk = false;
     if(hal.gpio->read(HAL_GPIO_SUNK_SENSOR_INPUT)){
         sunk = true;
