@@ -1,0 +1,63 @@
+{
+    "frame": "zoda",
+    "normalize": true,
+    "handedness_torque_factor": 0.0,
+    "thrusters": [
+        { 
+            "motor": 1,
+            "description": "Right vectored",
+            "position": {"x": 0.281, "y": 0.41075, "z": -0.14616},
+            "orientation": {"yaw": -30.0, "pitch": 0.0},
+            "handedness": "ccw"
+        },
+        {
+            "motor": 2,
+            "description": "Left vectored",
+            "position": {"x": 0.281, "y": -0.41075, "z": -0.14616},
+            "orientation": {"yaw": 30.0, "pitch": 0.0},
+            "handedness": "cw"
+        },
+        {
+            "motor": 3,
+            "description": "Forward thruster at rear right",
+            "position": {"x": -0.425, "y": 0.4775, "z": -0.0565},
+            "orientation": {"yaw": 0.0, "pitch": 0.0},
+            "handedness": "ccw"
+        },
+        {
+            "motor": 4,
+            "description": "Forward thruster at rear left",
+            "position": {"x": -0.425, "y": -0.4775, "z": -0.0565},
+            "orientation": {"yaw": 0.0, "pitch": 0.0},
+            "handedness": "cw"
+        },
+        {
+            "motor": 5,
+            "description": "Front-right vertical",
+            "position": {"x": 0.439, "y": 0.476, "z": -0.0147},
+            "orientation": {"yaw": 0.0, "pitch": -90.0},
+            "handedness": "ccw"
+        },
+        {
+            "motor": 6,
+            "description": "Front-left vertical",
+            "position": {"x": 0.439, "y": -0.476, "z": -0.0147},
+            "orientation": {"yaw": 0.0, "pitch": -90.0},
+            "handedness": "cw"
+        },
+        {
+            "motor": 7,
+            "description": "Rear-right vertical",
+            "position": {"x": -0.265, "y": 0.476, "z": -0.0147},
+            "orientation": {"yaw": 0.0, "pitch": -90.0},
+            "handedness": "cw"
+        },
+        {
+            "motor": 8,
+            "description": "Rear-left vertical",
+            "position": {"x": -0.265, "y": -0.476, "z": -0.0147},
+            "orientation": {"yaw": 0.0, "pitch": -90.0},
+            "handedness": "ccw"
+        }
+    ]
+}

@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Custom ArduSub Thruster Configuration Process</title>
+    <style>
+        :root {
+            --bg: #f6f8fb;
+            --card: #ffffff;
+            --ink: #17202a;
+            --muted: #5f6f7f;
+            --line: #d9e1ea;
+            --accent: #145f9f;
+            --warn: #8a5a00;
+            --code: #101820;
+        }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        main {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 40px 28px 68px;
+        }
+        h1 {
+            margin: 0 0 8px;
+            font-size: 32px;
+            line-height: 1.15;
+        }
+        h2 {
+            margin: 34px 0 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--line);
+            font-size: 21px;
+        }
+        h3 {
+            margin: 24px 0 8px;
+            font-size: 16px;
+        }
+        p {
+            margin: 0 0 12px;
+        }
+        ul, ol {
+            margin: 0 0 14px 24px;
+            padding: 0;
+        }
+        li {
+            margin: 5px 0;
+        }
+        code, pre {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+        code {
+            background: #e7eef6;
+            border-radius: 4px;
+            color: #0b365c;
+            padding: 1px 4px;
+        }
+        pre {
+            overflow-x: auto;
+            background: #0b1220;
+            color: #f5f7fb;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 13px;
+            line-height: 1.45;
+            border: 1px solid #263447;
+        }
+        pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+            border-radius: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card);
+            border: 1px solid var(--line);
+            margin: 12px 0 18px;
+        }
+        th, td {
+            border-bottom: 1px solid var(--line);
+            padding: 8px 10px;
+            text-align: right;
+            white-space: nowrap;
+            vertical-align: top;
+        }
+        th {
+            background: #eef3f8;
+            color: #253746;
+            font-weight: 650;
+        }
+        td:first-child,
+        th:first-child,
+        td:nth-child(2),
+        th:nth-child(2) {
+            text-align: left;
+        }
+        .meta {
+            color: var(--muted);
+            margin-bottom: 20px;
+        }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin: 22px 0 28px;
+        }
+        .box {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 14px 16px;
+        }
+        .box strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+        .callout {
+            border-left: 4px solid var(--accent);
+            background: #eef7ff;
+            padding: 12px 14px;
+            margin: 14px 0;
+        }
+        .warning {
+            border-left-color: var(--warn);
+            background: #fff7e6;
+        }
+        @media (max-width: 760px) {
+            main {
+                padding: 28px 16px 48px;
+            }
+            .summary {
+                grid-template-columns: 1fr;
+            }
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <header>
+        <h1>Custom ArduSub Thruster Configuration Process</h1>
+        <p class="meta">Prepared 2026-07-12. Example vehicle: Zoda. Source artifacts:
+            <code>Tools/Sunfish/thruster_matrix/zoda.json</code>,
+            <code>Tools/Sunfish/thruster_matrix/thruster_matrix.py</code>,
+            <code>libraries/AP_Motors/AP_Motors6DOF.h</code>, and
+            <code>libraries/AP_Motors/AP_Motors6DOF.cpp</code>.
+        </p>
+        <p>
+            This document explains the path from a physical thruster layout to a working ArduPilot
+            6DOF motor setup. It is meant for the next engineer who needs to create a custom thruster
+            configuration, generate the mixer factors, add the frame to ArduPilot, and bench-test
+            <code>MOTx_DIRECTION</code> so the vehicle drives the way the controller expects.
+        </p>
+    </header>
+
+    <section class="summary">
+        <div class="box">
+            <strong>Goal</strong>
+            Convert measured thruster geometry into ArduPilot mixer factors.
+        </div>
+        <div class="box">
+            <strong>Key output</strong>
+            A block of <code>add_motor_raw_6dof(...)</code> calls in <code>AP_Motors6DOF.cpp</code>.
+        </div>
+        <div class="box">
+            <strong>Final validation</strong>
+            Bench-test every motor direction, then test each vehicle axis.
+        </div>
+    </section>
+
+    <h2>Why This Process Exists</h2>
+    <p>
+        ArduPilot does not know where custom vehicle thrusters are mounted. It only knows the factors
+        we give it. If those factors do not match the physical vehicle, a command like "move forward"
+        or "pitch up" can produce unwanted yaw, roll, or reverse thrust. For an underwater vehicle this
+        quickly becomes hard to diagnose because the controller, motor direction parameters, thruster
+        handedness, and wiring can all look like possible causes.
+    </p>
+    <p>
+        The process below separates the problem into two layers. First, generate a geometry-based
+        thruster allocation matrix. Second, use bench tests to make sure each physical thruster's output
+        sign matches the matrix by setting <code>MOTx_DIRECTION</code> correctly.
+    </p>
+
+    <h2>Coordinate And Sign Convention</h2>
+    <p>
+        Use the vehicle body frame for all measurements and orientations:
+    </p>
+    <ul>
+        <li><strong>F / +X</strong>: forward</li>
+        <li><strong>R / +Y</strong>: right</li>
+        <li><strong>D / +Z</strong>: down</li>
+    </ul>
+    <p>
+        The <code>orientation</code> field in the JSON describes the force on the vehicle, not the
+        water flow. A vertical thruster that pushes water down applies upward force to the vehicle, so
+        it should use <code>"pitch": -90.0</code> and will normally produce a negative <code>D</code>
+        factor.
+    </p>
+    <p>
+        The roll, pitch, and yaw columns generated for <code>add_motor_raw_6dof()</code> follow
+        ArduPilot's mixer convention. For example, a front vertical thruster that lifts the bow creates
+        a nose-up physical moment, but its ArduPilot pitch factor is negative. This matches the existing
+        ArduSub frame tables and keeps the controller command sign consistent.
+    </p>
+    <div class="callout">
+        The moment calculation uses the chosen origin. Ideally this is the centre of gravity. If the
+        centre of gravity is not known yet, use a clearly documented provisional origin and update the
+        matrix once the real centre of gravity is measured.
+    </div>
+
+    <h2>Step 1: Create The Thruster Geometry File</h2>
+    <p>
+        Start by creating a JSON file like <code>Tools/Sunfish/thruster_matrix/zoda.json</code>. Each thruster needs:
+        motor number, description, position, orientation, and handedness.
+    </p>
+    <pre><code>{
+    "frame": "zoda",
+    "normalize": true,
+    "handedness_torque_factor": 0.0,
+    "thrusters": [
+        {
+            "motor": 1,
+            "description": "Right vectored",
+            "position": {"x": 0.281, "y": 0.41075, "z": -0.14616},
+            "orientation": {"yaw": -30.0, "pitch": 0.0},
+            "handedness": "ccw"
+        }
+    ]
+}</code></pre>
+    <p>
+        For Zoda, the current measured positions are:
+    </p>
+    <table>
+        <thead>
+            <tr>
+                <th>Motor</th>
+                <th>Description</th>
+                <th>x F (m)</th>
+                <th>y R (m)</th>
+                <th>z D (m)</th>
+                <th>Yaw (deg)</th>
+                <th>Pitch (deg)</th>
+                <th>Handedness</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>1</td><td>Right vectored</td><td>0.281</td><td>0.41075</td><td>-0.14616</td><td>-30.0</td><td>0.0</td><td>ccw</td></tr>
+            <tr><td>2</td><td>Left vectored</td><td>0.281</td><td>-0.41075</td><td>-0.14616</td><td>30.0</td><td>0.0</td><td>cw</td></tr>
+            <tr><td>3</td><td>Forward thruster at rear right</td><td>-0.425</td><td>0.4775</td><td>-0.0565</td><td>0.0</td><td>0.0</td><td>ccw</td></tr>
+            <tr><td>4</td><td>Forward thruster at rear left</td><td>-0.425</td><td>-0.4775</td><td>-0.0565</td><td>0.0</td><td>0.0</td><td>cw</td></tr>
+            <tr><td>5</td><td>Front-right vertical</td><td>0.439</td><td>0.476</td><td>-0.0147</td><td>0.0</td><td>-90.0</td><td>ccw</td></tr>
+            <tr><td>6</td><td>Front-left vertical</td><td>0.439</td><td>-0.476</td><td>-0.0147</td><td>0.0</td><td>-90.0</td><td>cw</td></tr>
+            <tr><td>7</td><td>Rear-right vertical</td><td>-0.265</td><td>0.476</td><td>-0.0147</td><td>0.0</td><td>-90.0</td><td>cw</td></tr>
+            <tr><td>8</td><td>Rear-left vertical</td><td>-0.265</td><td>-0.476</td><td>-0.0147</td><td>0.0</td><td>-90.0</td><td>ccw</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Step 2: Run The Matrix Generator</h2>
+    <p>
+        Run the script from the repository root:
+    </p>
+    <pre><code>Tools/Sunfish/thruster_matrix/thruster_matrix.py --show-scales Tools/Sunfish/thruster_matrix/zoda.json</code></pre>
+    <p>
+        The script calculates the force direction for each thruster, computes the moment from
+        <code>r x F</code>, maps that into ArduPilot's mixer convention, normalises each axis, and
+        prints paste-ready <code>add_motor_raw_6dof(...)</code> lines.
+    </p>
+    <p>
+        The current Zoda output is:
+    </p>
+    <table>
+        <thead>
+            <tr>
+                <th>Motor</th>
+                <th>Description</th>
+                <th>Roll</th>
+                <th>Pitch</th>
+                <th>Yaw</th>
+                <th>D</th>
+                <th>F</th>
+                <th>R</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>1</td><td>Right vectored</td><td>0.154</td><td>0.288</td><td>-1.000</td><td>0.000</td><td>0.866</td><td>-1.000</td></tr>
+            <tr><td>2</td><td>Left vectored</td><td>-0.154</td><td>0.288</td><td>1.000</td><td>0.000</td><td>0.866</td><td>1.000</td></tr>
+            <tr><td>3</td><td>Forward thruster at rear right</td><td>0.000</td><td>0.129</td><td>-0.962</td><td>0.000</td><td>1.000</td><td>0.000</td></tr>
+            <tr><td>4</td><td>Forward thruster at rear left</td><td>0.000</td><td>0.129</td><td>0.962</td><td>0.000</td><td>1.000</td><td>0.000</td></tr>
+            <tr><td>5</td><td>Front-right vertical</td><td>1.000</td><td>-1.000</td><td>0.000</td><td>-1.000</td><td>0.000</td><td>0.000</td></tr>
+            <tr><td>6</td><td>Front-left vertical</td><td>-1.000</td><td>-1.000</td><td>0.000</td><td>-1.000</td><td>0.000</td><td>0.000</td></tr>
+            <tr><td>7</td><td>Rear-right vertical</td><td>1.000</td><td>0.604</td><td>0.000</td><td>-1.000</td><td>0.000</td><td>0.000</td></tr>
+            <tr><td>8</td><td>Rear-left vertical</td><td>-1.000</td><td>0.604</td><td>0.000</td><td>-1.000</td><td>0.000</td><td>0.000</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Step 3: Add A Custom Frame In ArduPilot</h2>
+    <p>
+        Add a frame enum in <code>libraries/AP_Motors/AP_Motors6DOF.h</code>. For a dedicated Zoda
+        frame, prefer a named enum such as <code>SUB_FRAME_ZODA_6DOF</code> rather than overloading
+        <code>SUB_FRAME_CUSTOM</code>. This makes the frame selectable and reviewable without hiding
+        the vehicle identity.
+    </p>
+    <pre><code>typedef enum {
+    SUB_FRAME_BLUEROV1,
+    SUB_FRAME_VECTORED,
+    SUB_FRAME_VECTORED_6DOF,
+    SUB_FRAME_VECTORED_6DOF_90DEG,
+    SUB_FRAME_SIMPLEROV_3,
+    SUB_FRAME_SIMPLEROV_4,
+    SUB_FRAME_SIMPLEROV_5,
+    SUB_FRAME_ZODA_6DOF,
+    SUB_FRAME_CUSTOM
+} sub_frame_t;</code></pre>
+    <p>
+        Then add a matching case in <code>libraries/AP_Motors/AP_Motors6DOF.cpp</code> and paste the
+        generated matrix there:
+    </p>
+    <pre><code>case SUB_FRAME_ZODA_6DOF:
+    _frame_class_string = "ZODA_6DOF";
+    //                 Motor #          Roll    Pitch      Yaw       D       F       R  Test
+    add_motor_raw_6dof(AP_MOTORS_MOT_1,   0.154f,   0.288f,  -1.000f,        0,   0.866f,  -1.000f, 1); // Right vectored
+    add_motor_raw_6dof(AP_MOTORS_MOT_2,  -0.154f,   0.288f,   1.000f,        0,   0.866f,   1.000f, 2); // Left vectored
+    add_motor_raw_6dof(AP_MOTORS_MOT_3,        0,   0.129f,  -0.962f,        0,   1.000f,        0, 3); // Forward thruster at rear right
+    add_motor_raw_6dof(AP_MOTORS_MOT_4,        0,   0.129f,   0.962f,        0,   1.000f,        0, 4); // Forward thruster at rear left
+    add_motor_raw_6dof(AP_MOTORS_MOT_5,   1.000f,  -1.000f,        0,  -1.000f,        0,        0, 5); // Front-right vertical
+    add_motor_raw_6dof(AP_MOTORS_MOT_6,  -1.000f,  -1.000f,        0,  -1.000f,        0,        0, 6); // Front-left vertical
+    add_motor_raw_6dof(AP_MOTORS_MOT_7,   1.000f,   0.604f,        0,  -1.000f,        0,        0, 7); // Rear-right vertical
+    add_motor_raw_6dof(AP_MOTORS_MOT_8,  -1.000f,   0.604f,        0,  -1.000f,        0,        0, 8); // Rear-left vertical
+    break;</code></pre>
+
+    <h2>Step 4: Understand What The Matrix Does Not Prove</h2>
+    <p>
+        The matrix says how ArduPilot should allocate vehicle-level commands to thrusters. It does not
+        prove that the real installed motors spin in the expected direction. Wiring, ESC setup, prop
+        installation, and <code>MOTx_DIRECTION</code> can still invert an individual thruster.
+    </p>
+    <p>
+        Treat the matrix as the intended allocation and <code>MOTx_DIRECTION</code> as the per-motor
+        sign correction needed to make the physical vehicle match that allocation.
+    </p>
+
+    <h2>Step 5: Bench-Test MOTx_DIRECTION</h2>
+    <p>
+        Test motor direction before any in-water stability testing. The goal is to confirm the force on
+        the vehicle, not just the prop spin direction.
+    </p>
+    <ol>
+        <li>Secure the vehicle so a short motor pulse cannot move it unexpectedly.</li>
+        <li>Use a low output motor test to pulse one motor at a time.</li>
+        <li>Observe the force direction on the vehicle or the water flow direction if testing in water.</li>
+        <li>Compare that force to the intended positive thrust direction in the JSON.</li>
+        <li>If the force is opposite, flip that motor's <code>MOTx_DIRECTION</code>.</li>
+        <li>Repeat for all eight motors.</li>
+    </ol>
+    <div class="callout warning">
+        Do not use <code>MOTx_DIRECTION</code> to hide a wrong geometry matrix. Use it only to correct
+        an individual installed thruster whose physical output sign is reversed.
+    </div>
+
+    <h3>Expected Zoda Checks</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Check</th>
+                <th>Expected behaviour</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Vertical motors 5-8</td><td>When commanded for upward force, each pushes water down and lifts its corner.</td></tr>
+            <tr><td>Forward motors 3-4</td><td>Both produce forward vehicle force when driven in the configured forward direction.</td></tr>
+            <tr><td>Vectored motors 1-2</td><td>Each produces a forward and lateral component consistent with its 30 degree orientation.</td></tr>
+            <tr><td>Pitch command</td><td>Front and rear vertical thrusters oppose each other.</td></tr>
+            <tr><td>Roll command</td><td>Left and right vertical thrusters oppose each other.</td></tr>
+            <tr><td>Yaw command</td><td>Horizontal thrusters oppose in a way that rotates the vehicle without large net translation.</td></tr>
+            <tr><td>F/R/D commands</td><td>Thrusters combine to produce mostly forward, right, or down/up vehicle motion.</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Step 6: Get To A Stable Vehicle</h2>
+    <p>
+        Once individual <code>MOTx_DIRECTION</code> values are correct, test whole-axis commands at low
+        gain and low thrust. The first goal is not perfect control. The first goal is that every axis
+        moves in the expected direction and does not strongly excite the wrong axis.
+    </p>
+    <ol>
+        <li>Confirm neutral output is stable and no thruster creeps.</li>
+        <li>Command small D, F, and R translations and verify direction.</li>
+        <li>Command small roll, pitch, and yaw corrections and verify sign.</li>
+        <li>If an entire axis is reversed, revisit the matrix/sign convention before tuning gains.</li>
+        <li>If one motor fights the others, revisit that motor's <code>MOTx_DIRECTION</code>.</li>
+        <li>Only start controller tuning after direction and allocation are correct.</li>
+    </ol>
+
+    <h2>What This Supports And What It Does Not</h2>
+    <p>
+        This process supports a repeatable custom thruster configuration workflow. It makes the mixer
+        traceable back to geometry and gives the team a clear bench procedure for direction validation.
+        It does not replace in-water tuning, and it does not prove the centre of gravity is correct if
+        that origin was only estimated.
+    </p>
+    <p>
+        If the centre of gravity changes because batteries, payload, buoyancy, or ballast change, update
+        the thruster positions relative to the new centre of gravity and regenerate the matrix.
+    </p>
+
+    <h2>Appendix A: Artifact References</h2>
+    <ul>
+        <li><code>Tools/Sunfish/thruster_matrix/zoda.json</code>: Zoda source geometry, orientation, and handedness.</li>
+        <li><code>Tools/Sunfish/thruster_matrix/thruster_matrix.py</code>: script that generates mixer factors.</li>
+        <li><code>Tools/Sunfish/thruster_matrix/vectored_6dof_bluerov.json</code>: reference config that regenerates the built-in BlueROV vectored 6DOF frame.</li>
+        <li><code>libraries/AP_Motors/AP_Motors6DOF.h</code>: enum location for adding a named custom frame.</li>
+        <li><code>libraries/AP_Motors/AP_Motors6DOF.cpp</code>: implementation location for the generated <code>add_motor_raw_6dof(...)</code> block.</li>
+    </ul>
+
+    <h2>Appendix B: Useful Commands</h2>
+    <pre><code># Generate the Zoda matrix and normalisation scales
+Tools/Sunfish/thruster_matrix/thruster_matrix.py --show-scales Tools/Sunfish/thruster_matrix/zoda.json
+
+# Generate the BlueROV vectored 6DOF reference matrix
+Tools/Sunfish/thruster_matrix/thruster_matrix.py Tools/Sunfish/thruster_matrix/vectored_6dof_bluerov.json
+
+# Create a starter config from the BlueROV reference
+Tools/Sunfish/thruster_matrix/thruster_matrix.py --write-example /tmp/vectored_6dof_bluerov.json
+
+# Configure and build Sub SITL after changing motor code
+./waf configure --board sitl
+./waf sub</code></pre>
+
+    <div class="callout warning">
+        <strong>AI assistance disclosure:</strong> This process document was drafted with AI assistance
+        and should be reviewed by a Sunfish engineer before being used as release or PR evidence.
+    </div>
+</main>
+</body>
+</html>
