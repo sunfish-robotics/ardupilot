@@ -590,7 +590,7 @@ private:
 
 #if AP_SCRIPTING_ENABLED
     // guided velocity target for scripting (NED m/s)
-    bool set_target_velocity_NED(const Vector3f& vel_ned) override;
+    bool set_target_velocity_NED(const Vector3f& vel_ned, bool align_yaw_to_target) override;
 
     // guided position/velocity/attitude targets for scripting
     bool set_target_pos_NED(const Vector3f& target_pos, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool yaw_relative, bool terrain_alt) override;
