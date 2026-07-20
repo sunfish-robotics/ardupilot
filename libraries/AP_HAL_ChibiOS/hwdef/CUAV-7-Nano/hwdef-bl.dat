@@ -25,7 +25,6 @@ include ../include/network_bootloader.inc
 # Enable firmware checking
 define AP_CHECK_FIRMWARE_ENABLED 1
 
-env OPTIMIZE -Os
 
 # order of UARTs (and USB)
 SERIAL_ORDER UART7 UART5 USART3
