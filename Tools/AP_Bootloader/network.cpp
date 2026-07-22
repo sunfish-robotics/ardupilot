@@ -52,6 +52,10 @@
 #define AP_BOOTLOADER_NETWORK_USE_DHCP 0
 #endif
 
+#ifndef AP_BOOTLOADER_NETWORK_PHY_STARTUP_DELAY_MS
+#define AP_BOOTLOADER_NETWORK_PHY_STARTUP_DELAY_MS 0
+#endif
+
 #define LWIP_SEND_TIMEOUT_MS 50
 #define LWIP_NETIF_MTU       1500
 #define LWIP_LINK_POLL_INTERVAL TIME_S2I(5)
@@ -614,6 +618,10 @@ void BL_Network::init()
 {
     AP_Networking_ChibiOS::allocate_buffers();
 
+#if AP_BOOTLOADER_NETWORK_PHY_STARTUP_DELAY_MS > 0
+    thread_sleep_ms(AP_BOOTLOADER_NETWORK_PHY_STARTUP_DELAY_MS);
+#endif
+
     macInit();
 
     thisif = NEW_NOTHROW netif;
@@ -658,4 +666,3 @@ void BL_Network::status_printf(const char *fmt, ...)
 }
 
 #endif // AP_BOOTLOADER_NETWORK_ENABLED
-

@@ -26,9 +26,19 @@ include ../include/network_bootloader.inc
 undef AP_BOOTLOADER_NETWORK_USE_DHCP
 define AP_BOOTLOADER_NETWORK_USE_DHCP 0
 
-# Enable firmware checking
-define AP_CHECK_FIRMWARE_ENABLED 1
+# Boot PX4 after a short delay unless firmware explicitly requests a hold.
+undef HAL_BOOTLOADER_TIMEOUT
+define HAL_BOOTLOADER_TIMEOUT 5000
 
+# Disable firmware checking for the bench PX4 compatibility bootloader.
+define AP_CHECK_FIRMWARE_ENABLED 0
+
+# Match PX4's RTC clock source so bootloader startup preserves RTC backup registers.
+define STM32_LSE_ENABLED TRUE
+define STM32_RTCSEL STM32_RTCSEL_LSE_CK
+
+# Allow the externally powered LAN8742A to become ready for MDIO discovery.
+define AP_BOOTLOADER_NETWORK_PHY_STARTUP_DELAY_MS 100
 
 # order of UARTs (and USB)
 SERIAL_ORDER UART7 UART5 USART3
