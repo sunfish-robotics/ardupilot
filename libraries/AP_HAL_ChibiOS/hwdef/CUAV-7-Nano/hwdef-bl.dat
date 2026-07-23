@@ -22,10 +22,6 @@ FLASH_SIZE_KB 2048
 # Include network bootloader configuration
 include ../include/network_bootloader.inc
 
-# use static IP from network_bootloader.inc
-undef AP_BOOTLOADER_NETWORK_USE_DHCP
-define AP_BOOTLOADER_NETWORK_USE_DHCP 0
-
 # Boot PX4 after a short delay unless firmware explicitly requests a hold.
 undef HAL_BOOTLOADER_TIMEOUT
 define HAL_BOOTLOADER_TIMEOUT 5000
