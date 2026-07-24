@@ -176,10 +176,10 @@ int main(void)
 
 #if defined(HAL_GPIO_PIN_VBUS) && defined(HAL_ENABLE_VBUS_CHECK)
 #if HAL_USE_SERIAL_USB == TRUE
-    else if (palReadLine(HAL_GPIO_PIN_VBUS) == 0)  {
-        try_boot = true;
-        timeout = 0;
-    }
+    // else if (palReadLine(HAL_GPIO_PIN_VBUS) == 0)  {
+    //     try_boot = true;
+    //     timeout = 0;
+    // }
 #endif
 #endif
 
