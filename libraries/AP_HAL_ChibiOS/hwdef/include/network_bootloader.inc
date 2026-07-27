@@ -56,9 +56,3 @@ define AP_NETWORKING_BOOTLOADER_DEFAULT_NETMASK "255.255.255.0"
 
 # reserve 256 bytes for comms between app and bootloader
 RAM_RESERVE_START 256
-
-# bootloader timeout 
-define HAL_BOOTLOADER_TIMEOUT 36000000
-
-# disable USB
-undef HAL_USE_SERIAL_USB
