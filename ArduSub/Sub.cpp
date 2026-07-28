@@ -425,7 +425,7 @@ bool Sub::set_target_location(const Location& target_loc)
 #endif // AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
 
 #if AP_SCRIPTING_ENABLED
-bool Sub::set_target_velocity_NED(const Vector3f& vel_ned)
+bool Sub::set_target_velocity_NED(const Vector3f& vel_ned, bool)
 {
     // exit if vehicle is not in Guided mode or Auto-Guided mode
     if (!flightmode->in_guided_mode()) {
