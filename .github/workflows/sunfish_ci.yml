@@ -40,8 +40,10 @@ jobs:
           mkdir -p release-assets
           cp "build/${{ matrix.board }}/bin/ardusub.apj" \
              "release-assets/${{ matrix.board }}-ardusub.apj"
-          cp "build/${{ matrix.board }}/bin/ardusub_with_bl.hex" \
-             "release-assets/${{ matrix.board }}-ardusub-with-bootloader.hex"
+          if [ -f "build/${{ matrix.board }}/bin/ardusub_with_bl.hex" ]; then
+            cp "build/${{ matrix.board }}/bin/ardusub_with_bl.hex" \
+               "release-assets/${{ matrix.board }}-ardusub-with-bootloader.hex"
+          fi
           if [ -f "build/${{ matrix.board }}/bin/ardusub.abin" ]; then
             cp "build/${{ matrix.board }}/bin/ardusub.abin" \
                "release-assets/${{ matrix.board }}-ardusub.abin"
