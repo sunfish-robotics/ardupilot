@@ -80,8 +80,10 @@ jobs:
           mkdir -p release-assets
           cp "build/${{ matrix.board }}/bin/AP_Bootloader.bin" \
              "release-assets/${{ matrix.board }}-bootloader.bin"
-          cp "build/${{ matrix.board }}/bin/AP_Bootloader.hex" \
-             "release-assets/${{ matrix.board }}-bootloader.hex"
+          if [ -f "build/${{ matrix.board }}/bin/AP_Bootloader.hex" ]; then
+            cp "build/${{ matrix.board }}/bin/AP_Bootloader.hex" \
+               "release-assets/${{ matrix.board }}-bootloader.hex"
+          fi
       - name: Archive bootloader artifacts
         uses: actions/upload-artifact@v7
         with:
