@@ -1,0 +1,213 @@
+name: Sunfish CUAV ArduSub CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ardusub-firmware:
+    name: ArduSub firmware (${{ matrix.board }})
+    needs: bootloader
+    runs-on: ubuntu-22.04
+    container: ardupilot/ardupilot-dev-chibios:v0.1.3
+    strategy:
+      fail-fast: false
+      matrix:
+        board:
+          - CUAV-7-Nano
+          - CUAVv5Nano
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Download freshly built bootloader
+        uses: actions/download-artifact@v7
+        with:
+          name: bootloader-${{ matrix.board }}
+          path: fresh-bootloader
+      - name: Prepare firmware build
+        run: |
+          python3 -m pip install --progress-bar off --user -U intelhex
+          cp "fresh-bootloader/${{ matrix.board }}-bootloader.bin" \
+             "Tools/bootloaders/${{ matrix.board }}_bl.bin"
+          cmp "fresh-bootloader/${{ matrix.board }}-bootloader.bin" \
+              "Tools/bootloaders/${{ matrix.board }}_bl.bin"
+      - name: Build ArduSub
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          PATH="/github/home/.local/bin:$PATH"
+          ./waf configure --board "${{ matrix.board }}"
+          ./waf sub
+      - name: Prepare firmware artifacts
+        run: |
+          mkdir -p release-assets
+          cp "build/${{ matrix.board }}/bin/ardusub.apj" \
+             "release-assets/${{ matrix.board }}-ardusub.apj"
+          cp "build/${{ matrix.board }}/bin/ardusub_with_bl.hex" \
+             "release-assets/${{ matrix.board }}-ardusub-with-bootloader.hex"
+          if [ -f "build/${{ matrix.board }}/bin/ardusub.abin" ]; then
+            cp "build/${{ matrix.board }}/bin/ardusub.abin" \
+               "release-assets/${{ matrix.board }}-ardusub.abin"
+          fi
+      - name: Archive firmware artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: firmware-${{ matrix.board }}
+          path: release-assets
+          if-no-files-found: error
+          retention-days: 30
+
+  bootloader:
+    name: Bootloader (${{ matrix.board }})
+    runs-on: ubuntu-22.04
+    container: ardupilot/ardupilot-dev-chibios:v0.1.3
+    strategy:
+      fail-fast: false
+      matrix:
+        board:
+          - CUAV-7-Nano
+          - CUAVv5Nano
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Install Intel HEX support
+        run: python3 -m pip install --progress-bar off --user -U intelhex
+      - name: Build bootloader
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          PATH="/github/home/.local/bin:$PATH"
+          ./waf configure --board "${{ matrix.board }}" --bootloader --Werror
+          ./waf clean
+          ./waf bootloader
+      - name: Prepare bootloader artifacts
+        run: |
+          mkdir -p release-assets
+          cp "build/${{ matrix.board }}/bin/AP_Bootloader.bin" \
+             "release-assets/${{ matrix.board }}-bootloader.bin"
+          cp "build/${{ matrix.board }}/bin/AP_Bootloader.hex" \
+             "release-assets/${{ matrix.board }}-bootloader.hex"
+      - name: Archive bootloader artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: bootloader-${{ matrix.board }}
+          path: release-assets
+          if-no-files-found: error
+          retention-days: 30
+
+  ardusub-autotest:
+    name: ArduSub autotest
+    runs-on: ubuntu-22.04
+    container:
+      image: ardupilot/ardupilot-dev-base:v0.1.3
+      options: --privileged --cap-add=SYS_PTRACE --security-opt apparmor=unconfined --security-opt seccomp=unconfined
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Run ArduSub autotest
+        env:
+          CI_BUILD_TARGET: sitltest-sub
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          PATH="/github/home/.local/bin:$PATH"
+          Tools/scripts/build_ci.sh
+      - name: Archive failed build logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fail-sitltest-sub
+          path: |
+            /tmp/buildlogs
+            logs
+            ap-*.core
+            core.*
+            dumpstack.sh_*
+            dumpcore.sh_*
+          retention-days: 14
+
+  source-quality:
+    name: Source quality
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: 3.x
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
+      - name: Check copyright tests
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pytest
+          PYTHONPATH="." pytest tests/test_pre_commit_copyright.py
+      - name: Checkout waf submodule
+        run: git submodule update --init --recursive --depth 1 modules/waf
+      - name: Install astyle
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes astyle
+      - name: Run astyle cleanliness check
+        env:
+          CI_BUILD_TARGET: astyle-cleanliness
+        run: Tools/scripts/build_ci.sh
+
+  publish-release:
+    name: Publish immutable firmware release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs:
+      - ardusub-firmware
+      - bootloader
+      - ardusub-autotest
+      - source-quality
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Download firmware artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: firmware-*
+          path: release-assets
+          merge-multiple: true
+      - name: Download bootloader artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: bootloader-*
+          path: release-assets
+          merge-multiple: true
+      - name: Create immutable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_date="$(TZ=Australia/Perth date +%Y.%m.%d)"
+          short_sha="$(printf '%s' "$GITHUB_SHA" | cut -c1-12)"
+          release_tag="sunfish-${release_date}-${short_sha}"
+
+          if gh release view "$release_tag" >/dev/null 2>&1; then
+            echo "Release $release_tag already exists; refusing to modify it."
+            exit 1
+          fi
+
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$release_tag" >/dev/null 2>&1; then
+            echo "Tag $release_tag already exists; refusing to move it."
+            exit 1
+          fi
+
+          gh release create "$release_tag" release-assets/* \
+            --target "$GITHUB_SHA" \
+            --title "Sunfish CUAV ArduSub ${release_date} (${short_sha})" \
+            --notes "Automated build from commit $GITHUB_SHA.
+
+          Workflow: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
