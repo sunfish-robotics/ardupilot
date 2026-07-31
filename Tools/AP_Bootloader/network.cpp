@@ -52,6 +52,10 @@
 #define AP_BOOTLOADER_NETWORK_USE_DHCP 0
 #endif
 
+#ifndef AP_BOOTLOADER_NETWORK_PHY_STARTUP_DELAY_MS
+#define AP_BOOTLOADER_NETWORK_PHY_STARTUP_DELAY_MS 0
+#endif
+
 #define LWIP_SEND_TIMEOUT_MS 50
 #define LWIP_NETIF_MTU       1500
 #define LWIP_LINK_POLL_INTERVAL TIME_S2I(5)
@@ -360,18 +364,31 @@ char *BL_Network::read_headers(SocketAPM *sock)
 {
     char *ret = (char *)malloc(1024);
     char *p = ret;
-    while (true) {
+    while (p - ret < 1023) {
         char c;
         auto n = sock->recv(&c, 1, 100);
         if (n != 1) {
             break;
         }
         *p++ = c;
-        if (p-ret >= 4 && strcmp(p-4, "\r\n\r\n") == 0) {
+        if (p-ret >= 4 && memcmp(p-4, "\r\n\r\n", 4) == 0) {
             break;
         }
     }
+    *p = 0;
     return ret;
+}
+
+static void send_http_header(SocketAPM *sock, bool success)
+{
+    const char *header = success ?
+        "HTTP/1.1 200 OK\r\n" :
+        "HTTP/1.1 400 Bad Request\r\n";
+    sock->send(header, strlen(header));
+    const char *fields = "Content-Type: text/html\r\n"
+                         "Connection: close\r\n"
+                         "\r\n";
+    sock->send(fields, strlen(fields));
 }
 
 /*
@@ -379,16 +396,27 @@ char *BL_Network::read_headers(SocketAPM *sock)
  */
 void BL_Network::handle_post(SocketAPM *sock, uint32_t content_length)
 {
+    static constexpr uint8_t reserve_lead_words = 8;
+
     /*
       skip over form boundary. We don't care about the filename as we
       only support one file
      */
     uint8_t state = 0;
     while (true) {
-        char c;
-        if (sock->recv(&c, 1, 100) != 1) {
+        if (content_length == 0) {
+            status_printf("Flash failed: invalid upload");
+            send_http_header(sock, false);
             return;
         }
+
+        char c;
+        if (sock->recv(&c, 1, 100) != 1) {
+            status_printf("Flash failed: incomplete upload");
+            send_http_header(sock, false);
+            return;
+        }
+
         content_length--;
         // absorb up to \r\n\r\n
         if (c == '\r') {
@@ -410,59 +438,125 @@ void BL_Network::handle_post(SocketAPM *sock, uint32_t content_length)
             state = 0;
         }
     }
+
+    if (content_length < sizeof(uint32_t) * reserve_lead_words ||
+        content_length > board_info.fw_size) {
+        status_printf("Flash failed: invalid size");
+        send_http_header(sock, false);
+        return;
+    }
+
     /*
       erase all of flash
      */
     status_printf("Erasing ...");
     flash_set_keep_unlocked(true);
-    uint32_t sec=0;
-    while (flash_func_sector_size(sec) != 0 &&
-           flash_func_erase_sector(sec)) {
+    uint32_t erased_bytes = 0;
+    uint32_t sec = 0;
+    bool flash_ok = true;
+
+    while (erased_bytes < content_length) {
+        const uint32_t sector_size = flash_func_sector_size(sec);
+
+        if (sector_size == 0 || !flash_func_erase_sector(sec)) {
+            flash_ok = false;
+            break;
+        }
+
+        erased_bytes += sector_size;
         thread_sleep_ms(10);
         sec++;
-        if (stm32_flash_getpageaddr(sec) - stm32_flash_getpageaddr(0) >= content_length) {
-            break;
-        }
     }
+
     /*
-      receive file and write to flash
+      Receive the file and write it to flash. Keep the vector table erased
+      until the complete HTTP body has been received and written successfully.
      */
     uint32_t buf[128];
+    uint32_t first_words[reserve_lead_words];
+    memset(first_words, 0xff, sizeof(first_words));
     uint32_t ofs = 0;
-
-    // must be multiple of 4
-    content_length &= ~3;
-
-    const uint32_t max_ofs = MIN(BOARD_FLASH_SIZE*1024, content_length);
+    const uint32_t max_ofs = content_length & ~3U;
     uint8_t last_pct = 0;
-    while (ofs < max_ofs) {
+
+    while (flash_ok && ofs < max_ofs) {
         const uint32_t needed = MIN(sizeof(buf), max_ofs-ofs);
         auto n = sock->recv((void*)buf, needed, 10000);
+
         if (n <= 0) {
+            flash_ok = false;
             break;
         }
+
         // we need a whole number of words
         if (n % 4 != 0 && n < needed) {
             auto n2 = sock->recv(((uint8_t*)buf)+n, 4 - n%4, 10000);
+
             if (n2 > 0) {
                 n += n2;
             }
         }
-        flash_write_buffer(ofs, buf, n/4);
+
+        if (n % 4 != 0) {
+            flash_ok = false;
+            break;
+        }
+
+        if (ofs < sizeof(first_words)) {
+            const uint32_t lead_bytes = MIN(sizeof(first_words) - ofs, uint32_t(n));
+            memcpy(reinterpret_cast<uint8_t *>(first_words) + ofs, buf, lead_bytes);
+            memset(buf, 0xff, lead_bytes);
+        }
+
+        if (!flash_write_buffer(ofs, buf, n/4)) {
+            flash_ok = false;
+            break;
+        }
+
         ofs += n;
         uint8_t pct = ofs*100/max_ofs;
+
         if (pct % 10 == 0 && last_pct != pct) {
             last_pct = pct;
             status_printf("Flashing %u%%", unsigned(pct));
         }
     }
-    if (ofs % 32 != 0) {
+
+    // Consume any final bytes which cannot be written as a complete word.
+    uint8_t tail[3];
+    const uint8_t tail_length = content_length - max_ofs;
+    if (flash_ok && tail_length > 0 && sock->recv(tail, tail_length, 10000) != tail_length) {
+        flash_ok = false;
+    }
+
+    if (flash_ok && ofs != max_ofs) {
+        flash_ok = false;
+    }
+
+    if (flash_ok && ofs % 32 != 0) {
         // pad to 32 bytes
         memset(buf, 0xff, sizeof(buf));
-        flash_write_buffer(ofs, buf, (32 - ofs%32)/4);
+        flash_ok = flash_write_buffer(ofs, buf, (32 - ofs%32)/4);
     }
-    flash_write_flush();
+
+    if (flash_ok) {
+        flash_ok = flash_write_flush();
+    }
+
+    if (flash_ok) {
+        flash_ok = flash_write_buffer(0, first_words, reserve_lead_words) && flash_write_flush();
+    }
+
     flash_set_keep_unlocked(false);
+
+    if (!flash_ok) {
+        status_printf("Flash failed: incomplete upload");
+        send_http_header(sock, false);
+        const char *str = "<html><body>Flash failed; bootloader remains active</body></html>";
+        sock->send(str, strlen(str));
+        return;
+    }
+
 #if AP_CHECK_FIRMWARE_ENABLED
     const auto ok = check_good_firmware();
 #else
@@ -471,10 +565,12 @@ void BL_Network::handle_post(SocketAPM *sock, uint32_t content_length)
     if (ok == check_fw_result_t::CHECK_FW_OK) {
         need_launch = true;
         status_printf("Flash done: OK");
+        send_http_header(sock, true);
         const char *str = "<html><head><meta http-equiv=\"refresh\" content=\"4; url=/\"></head><body>Flash OK, booting</body></html>";
         sock->send(str, strlen(str));
     } else {
         status_printf("Flash done: ERR:%u", unsigned(ok));
+        send_http_header(sock, false);
     }
 }
 
@@ -488,12 +584,6 @@ void BL_Network::handle_request(SocketAPM *sock)
      */
     char *headers = read_headers(sock);
 
-    const char *header = "HTTP/1.1 200 OK\r\n"
-        "Content-Type: text/html\r\n"
-        "Connection: close\r\n"
-        "\r\n";
-    sock->send(header, strlen(header));
-
     if (strncmp(headers, "POST / ", 7) == 0) {
         const char *clen1 = "\r\nContent-Length:";
         const char *clen2 = "\r\ncontent-length:";
@@ -502,14 +592,29 @@ void BL_Network::handle_request(SocketAPM *sock)
             p = strstr(headers, clen2);
         }
         if (p != nullptr) {
+            const char *expect1 = "\r\nExpect: 100-continue";
+            const char *expect2 = "\r\nexpect: 100-continue";
+
+            if (strstr(headers, expect1) != nullptr || strstr(headers, expect2) != nullptr) {
+                const char *continue_header = "HTTP/1.1 100 Continue\r\n\r\n";
+                sock->send(continue_header, strlen(continue_header));
+            }
+
             p += strlen(clen1);
             const uint32_t content_length = atoi(p);
             handle_post(sock, content_length);
-            delete headers;
+            free(headers);
             delete sock;
             return;
         }
+
+        send_http_header(sock, false);
+        free(headers);
+        delete sock;
+        return;
     }
+
+    send_http_header(sock, true);
 
     /*
       check for async status
@@ -520,7 +625,7 @@ void BL_Network::handle_request(SocketAPM *sock)
             WITH_SEMAPHORE(status_mtx);
             sock->send(bl_status, strlen(bl_status));
         }
-        delete headers;
+        free(headers);
         delete sock;
         return;
     }
@@ -540,7 +645,7 @@ void BL_Network::handle_request(SocketAPM *sock)
         sock->send(msg2, strlen(msg2));
         delete msg2;
     }
-    delete headers;
+    free(headers);
     delete sock;
     AP_ROMFS::free(msg);
 }
@@ -614,6 +719,10 @@ void BL_Network::init()
 {
     AP_Networking_ChibiOS::allocate_buffers();
 
+#if AP_BOOTLOADER_NETWORK_PHY_STARTUP_DELAY_MS > 0
+    thread_sleep_ms(AP_BOOTLOADER_NETWORK_PHY_STARTUP_DELAY_MS);
+#endif
+
     macInit();
 
     thisif = NEW_NOTHROW netif;
@@ -658,4 +767,3 @@ void BL_Network::status_printf(const char *fmt, ...)
 }
 
 #endif // AP_BOOTLOADER_NETWORK_ENABLED
-

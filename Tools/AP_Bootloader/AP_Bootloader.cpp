@@ -51,7 +51,12 @@ struct boardinfo board_info = {
 };
 
 #ifndef HAL_BOOTLOADER_TIMEOUT
-#define HAL_BOOTLOADER_TIMEOUT 5000
+#define HAL_BOOTLOADER_TIMEOUT 5000 // 5 sec
+#endif
+
+// time to remain in the bootloader when RTC_BOOT_HOLD is requested
+#ifndef HAL_BOOTLOADER_HOLD_TIMEOUT_MS
+#define HAL_BOOTLOADER_HOLD_TIMEOUT_MS (10U * 60U * 1000U) // 10 minutes
 #endif
 
 #ifndef HAL_STAY_IN_BOOTLOADER_VALUE
@@ -110,7 +115,7 @@ int main(void)
         try_boot = true;
         timeout = 0;
     } else if (m == RTC_BOOT_HOLD) {
-        timeout = 600000; // 10 minutes
+        timeout = HAL_BOOTLOADER_HOLD_TIMEOUT_MS;
     } else if (m == RTC_BOOT_FAST) {
         try_boot = true;
         timeout = 0;
@@ -242,5 +247,3 @@ int main(void)
     }
 #endif
 }
-
-

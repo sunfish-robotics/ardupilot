@@ -22,13 +22,24 @@ FLASH_SIZE_KB 2048
 # Include network bootloader configuration
 include ../include/network_bootloader.inc
 
-# Enable firmware checking
-define AP_CHECK_FIRMWARE_ENABLED 1
+# Disable firmware checking for the bench PX4 compatibility bootloader.
+define AP_CHECK_FIRMWARE_ENABLED 0
+
+# Match PX4's RTC clock source so bootloader startup preserves RTC backup registers.
+define STM32_LSE_ENABLED TRUE
+define STM32_RTCSEL STM32_RTCSEL_LSE_CK
+
+# Allow the externally powered LAN8742A to become ready for MDIO discovery.
+define AP_BOOTLOADER_NETWORK_PHY_STARTUP_DELAY_MS 100
 
 # order of UARTs (and USB)
 SERIAL_ORDER UART7 UART5 USART3
 
-# USB disabled via network_bootloader.inc
+# USB power lines are intentionally cut so Q5 can switch the autopilot and
+# Raspberry Pi independently. VBUS therefore remains low even when the USB data
+# lines are connected. If VBUS sensing were enabled, the bootloader would treat
+# this as no USB connection and could override RTC_BOOT_HOLD by booting the main
+# firmware. USB and VBUS are therefore omitted from this bootloader configuration.
 #PA11 OTG_FS_DM OTG1
 #PA12 OTG_FS_DP OTG1
 #PA9 VBUS INPUT OPENDRAIN
