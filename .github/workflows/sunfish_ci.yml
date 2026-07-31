@@ -55,10 +55,8 @@ jobs:
              "release-assets/${{ matrix.board }}-ardusub.apj"
           cp "build/${{ matrix.board }}/bin/ardusub_with_bl.hex" \
              "release-assets/${{ matrix.board }}-ardusub-with-bootloader.hex"
-          if [ -f "build/${{ matrix.board }}/bin/ardusub.abin" ]; then
-            cp "build/${{ matrix.board }}/bin/ardusub.abin" \
-               "release-assets/${{ matrix.board }}-ardusub.abin"
-          fi
+          cp "build/${{ matrix.board }}/bin/ardusub.bin" \
+             "release-assets/${{ matrix.board }}-ardusub.bin"
       - name: Archive firmware artifacts
         uses: actions/upload-artifact@v7
         with:
