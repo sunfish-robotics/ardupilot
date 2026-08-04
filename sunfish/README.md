@@ -16,3 +16,5 @@ board name and, optionally, an artifact directory to override those defaults:
 Artifacts are written to `sunfish/artifacts/<board>` by default. The script
 builds a fresh bootloader, uses it to create the combined ArduSub HEX image, and
 restores the checked-in bootloader binary when it exits.
+
+The Sunfish CI workflow uses this same script for its per-board release builds.

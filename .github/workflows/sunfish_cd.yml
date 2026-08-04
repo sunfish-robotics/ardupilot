@@ -11,49 +11,6 @@ permissions:
   packages: write
 
 jobs:
-  build:
-    name: Upload firmware to Google Drive
-    runs-on: ubuntu-latest
-    container: ardupilot/ardupilot-dev-chibios:v0.1.3
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          submodules: 'recursive'
-          fetch-depth: 0
-      - name: ccache cache files
-        uses: actions/cache@v6
-        with:
-          path: ~/.ccache
-          key: ${{github.workflow}}-ccache-${{github.ref}}
-          restore-keys: |
-            ${{github.workflow}}-ccache-
-      - name: setup ccache
-        run: |
-          . .github/workflows/ccache.env
-      - name: Setup GitHub CLI
-        uses: wusatosi/setup-gh@v1
-      - name: Setup Dependencies
-        run: sudo apt update && sudo apt install -y unzip
-      - name: Setup rclone
-        uses: AnimMouse/setup-rclone@v1
-        with:
-          rclone_config: ${{ secrets.RCLONE_CONFIG }}
-      - name: Build Sunfish firmware
-        run: |
-          git config --global --add safe.directory ${GITHUB_WORKSPACE}
-          PATH="/usr/lib/ccache:/opt/gcc-arm-none-eabi-10/bin:$PATH"
-          PATH="/github/home/.local/bin:$PATH"
-          make sunfish
-          ccache -s
-      - name: Upload binaries to Google Drive with rclone
-        if: ${{github.ref == 'refs/heads/master'}}
-        run: |
-          rclone copy \
-            build/sunfish/$(git describe --tags) \
-            gdrive:$(git describe --tags) \
-            --create-empty-src-dirs \
-            --transfers=4 --checkers=8 --progress
-
   sitl-docker-container:
     name: Build SITL Docker container (${{matrix.platform}})
     runs-on: ubuntu-latest
