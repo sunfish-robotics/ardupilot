@@ -16,57 +16,7 @@ permissions:
 
 jobs:
   ardusub-firmware:
-    name: ArduSub firmware (${{ matrix.board }})
-    needs: bootloader
-    runs-on: ubuntu-22.04
-    container: ardupilot/ardupilot-dev-chibios:v0.1.3
-    strategy:
-      fail-fast: false
-      matrix:
-        board:
-          - CUAV-7-Nano
-          - CUAVv5Nano
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          submodules: recursive
-      - name: Download freshly built bootloader
-        uses: actions/download-artifact@v8
-        with:
-          name: bootloader-${{ matrix.board }}
-          path: fresh-bootloader
-      - name: Prepare firmware build
-        run: |
-          python3 -m pip install --progress-bar off --user -U intelhex
-          cp "fresh-bootloader/${{ matrix.board }}-bootloader.bin" \
-             "Tools/bootloaders/${{ matrix.board }}_bl.bin"
-          cmp "fresh-bootloader/${{ matrix.board }}-bootloader.bin" \
-              "Tools/bootloaders/${{ matrix.board }}_bl.bin"
-      - name: Build ArduSub
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          PATH="/github/home/.local/bin:$PATH"
-          ./waf configure --board "${{ matrix.board }}"
-          ./waf sub
-      - name: Prepare firmware artifacts
-        run: |
-          mkdir -p release-assets
-          cp "build/${{ matrix.board }}/bin/ardusub.apj" \
-             "release-assets/${{ matrix.board }}-ardusub.apj"
-          cp "build/${{ matrix.board }}/bin/ardusub_with_bl.hex" \
-             "release-assets/${{ matrix.board }}-ardusub-with-bootloader.hex"
-          cp "build/${{ matrix.board }}/bin/ardusub.bin" \
-             "release-assets/${{ matrix.board }}-ardusub.bin"
-      - name: Archive firmware artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: firmware-${{ matrix.board }}
-          path: release-assets
-          if-no-files-found: error
-          retention-days: 30
-
-  bootloader:
-    name: Bootloader (${{ matrix.board }})
+    name: Bootloader and ArduSub firmware (${{ matrix.board }})
     runs-on: ubuntu-22.04
     container: ardupilot/ardupilot-dev-chibios:v0.1.3
     strategy:
@@ -81,25 +31,28 @@ jobs:
           submodules: recursive
       - name: Install Intel HEX support
         run: python3 -m pip install --progress-bar off --user -U intelhex
-      - name: Build bootloader
+      - name: Build bootloader and ArduSub firmware
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           PATH="/github/home/.local/bin:$PATH"
-          ./waf configure --board "${{ matrix.board }}" --bootloader --Werror
-          ./waf clean
-          ./waf bootloader
-      - name: Prepare bootloader artifacts
-        run: |
-          mkdir -p release-assets
-          cp "build/${{ matrix.board }}/bin/AP_Bootloader.bin" \
-             "release-assets/${{ matrix.board }}-bootloader.bin"
-          cp "build/${{ matrix.board }}/bin/AP_Bootloader.hex" \
-             "release-assets/${{ matrix.board }}-bootloader.hex"
+          ./sunfish/build.sh "${{ matrix.board }}" release-assets
+      - name: Archive firmware artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: firmware-${{ matrix.board }}
+          path: |
+            release-assets/${{ matrix.board }}-ardusub.apj
+            release-assets/${{ matrix.board }}-ardusub.bin
+            release-assets/${{ matrix.board }}-ardusub-with-bootloader.hex
+          if-no-files-found: error
+          retention-days: 30
       - name: Archive bootloader artifacts
         uses: actions/upload-artifact@v7
         with:
           name: bootloader-${{ matrix.board }}
-          path: release-assets
+          path: |
+            release-assets/${{ matrix.board }}-bootloader.bin
+            release-assets/${{ matrix.board }}-bootloader.hex
           if-no-files-found: error
           retention-days: 30
 
@@ -165,7 +118,6 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     needs:
       - ardusub-firmware
-      - bootloader
       - ardusub-autotest
       - source-quality
     runs-on: ubuntu-22.04
