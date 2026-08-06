@@ -12,7 +12,6 @@ import math
 import os
 import sys
 
-
 AXES = ("roll", "pitch", "yaw", "throttle", "forward", "lateral")
 AXIS_LABELS = {
     "roll": "Roll",
