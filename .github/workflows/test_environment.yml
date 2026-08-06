@@ -1,18 +1,7 @@
 name: test environment setup
+
 on:
-  schedule:
-    - cron: '0 0 * * 6'  # every saturday at midnight
   workflow_dispatch:
-  push:
-    paths:
-      - '.github/workflows/test_environment.yml'
-      - 'Tools/environment_install/**'
-
-  pull_request:
-    paths:
-      - '.github/workflows/test_environment.yml'
-      - 'Tools/environment_install/**'
-
 
 concurrency:
   group: ci-${{github.workflow}}-${{ github.ref }}
@@ -72,7 +61,7 @@ jobs:
           esac
 
       # git checkout the PR
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
             submodules: 'recursive'
       - name: test install environment ${{matrix.os}}.${{matrix.name}}
@@ -153,7 +142,7 @@ jobs:
           TZ: Europe/Paris
         run: |
           apk update && apk add --no-cache git
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
       - name: test install environment alpine

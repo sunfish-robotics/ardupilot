@@ -1,8 +1,7 @@
 name: pre-commit
+
 on:
-  pull_request:
-  push:
-    branches: [master]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{github.workflow}}-${{ github.ref }}
@@ -12,8 +11,8 @@ jobs:
   ci:
     runs-on: ubuntu-slim
     steps:
-    - uses: actions/checkout@v6
-    - uses: actions/setup-python@v6
+    - uses: actions/checkout@v7
+    - uses: actions/setup-python@v7
       with:
         python-version: 3.x
     - uses: pre-commit/action@v3.0.1

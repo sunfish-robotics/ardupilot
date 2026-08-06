@@ -10,6 +10,10 @@ MCU STM32H7xx STM32H743xx
 # crystal frequency
 OSCILLATOR_HZ 16000000
 
+# Match the bootloader RTC clock source so reboot handoff markers are preserved.
+define STM32_LSE_ENABLED TRUE
+define STM32_RTCSEL STM32_RTCSEL_LSE_CK
+
 # ChibiOS system timer
 STM32_ST_USE_TIMER 2
 

@@ -22,18 +22,23 @@ FLASH_SIZE_KB 2048
 # Include network bootloader configuration
 include ../include/network_bootloader.inc
 
-# Enable firmware checking
-define AP_CHECK_FIRMWARE_ENABLED 1
+# Disable firmware checking for the bench PX4 compatibility bootloader.
+define AP_CHECK_FIRMWARE_ENABLED 0
 
-env OPTIMIZE -Os
+# Match PX4's RTC clock source so bootloader startup preserves RTC backup registers.
+define STM32_LSE_ENABLED TRUE
+define STM32_RTCSEL STM32_RTCSEL_LSE_CK
+
+# Allow the externally powered LAN8742A to become ready for MDIO discovery.
+define AP_BOOTLOADER_NETWORK_PHY_STARTUP_DELAY_MS 100
 
 # order of UARTs (and USB)
-SERIAL_ORDER UART7 UART5 USART3
+SERIAL_ORDER OTG1 UART7 UART5 USART3
 
-# USB disabled via network_bootloader.inc
-#PA11 OTG_FS_DM OTG1
-#PA12 OTG_FS_DP OTG1
-#PA9 VBUS INPUT OPENDRAIN
+# USB
+PA11 OTG_FS_DM OTG1
+PA12 OTG_FS_DP OTG1
+PA9 VBUS INPUT OPENDRAIN
 
 # pins for SWD debugging
 PA13 JTMS-SWDIO SWD
