@@ -155,14 +155,14 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
 
     case SUB_FRAME_VECTORED_6DOF:
         _frame_class_string = "VECTORED_6DOF";
-        add_motor_raw_6dof(AP_MOTORS_MOT_1,     0,              0,              1.0f,           0,                  -1.0f,              1.0f,           1);
-        add_motor_raw_6dof(AP_MOTORS_MOT_2,     0,              0,              -1.0f,          0,                  -1.0f,              -1.0f,          2);
-        add_motor_raw_6dof(AP_MOTORS_MOT_3,     0,              0,              -1.0f,          0,                  1.0f,               1.0f,           3);
-        add_motor_raw_6dof(AP_MOTORS_MOT_4,     0,              0,              1.0f,           0,                  1.0f,               -1.0f,          4);
-        add_motor_raw_6dof(AP_MOTORS_MOT_5,     1.0f,           -1.0f,          0,              -1.0f,              0,                  0,              5);
-        add_motor_raw_6dof(AP_MOTORS_MOT_6,     -1.0f,          -1.0f,          0,              -1.0f,              0,                  0,              6);
-        add_motor_raw_6dof(AP_MOTORS_MOT_7,     1.0f,           1.0f,           0,              -1.0f,              0,                  0,              7);
-        add_motor_raw_6dof(AP_MOTORS_MOT_8,     -1.0f,          1.0f,           0,              -1.0f,              0,                  0,              8);
+        add_motor_raw_6dof(AP_MOTORS_MOT_1,     0,              0,              1.0f,           0,                  -1.0f,              1.0f,           1); // Front-right vectored
+        add_motor_raw_6dof(AP_MOTORS_MOT_2,     0,              0,              -1.0f,          0,                  -1.0f,              -1.0f,          2); // Front-left vectored
+        add_motor_raw_6dof(AP_MOTORS_MOT_3,     0,              0,              -1.0f,          0,                  1.0f,               1.0f,           3); // Rear-right vectored
+        add_motor_raw_6dof(AP_MOTORS_MOT_4,     0,              0,              1.0f,           0,                  1.0f,               -1.0f,          4); // Rear-left vectored
+        add_motor_raw_6dof(AP_MOTORS_MOT_5,     1.0f,           -1.0f,          0,              -1.0f,              0,                  0,              5); // Front-right vertical
+        add_motor_raw_6dof(AP_MOTORS_MOT_6,     -1.0f,          -1.0f,          0,              -1.0f,              0,                  0,              6); // Front-left vertical
+        add_motor_raw_6dof(AP_MOTORS_MOT_7,     1.0f,           1.0f,           0,              -1.0f,              0,                  0,              7); // Rear-right vertical
+        add_motor_raw_6dof(AP_MOTORS_MOT_8,     -1.0f,          1.0f,           0,              -1.0f,              0,                  0,              8); // Rear-left vertical
         break;
 
     case SUB_FRAME_VECTORED:
@@ -176,24 +176,16 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
         break;
 
     case SUB_FRAME_CUSTOM:
-        //                 Motor #              Roll Factor     Pitch Factor    Yaw Factor      Throttle Factor     Forward Factor      Lateral Factor  Testing Order
-        _frame_class_string = "ZODA_6DOF";
-        // Right vectored thruster
-        add_motor_raw_6dof(AP_MOTORS_MOT_1,     0,              0,              0.2f,           0,                  -1.0f,              1.0f,           1);
-        // Left vectored thruster
-        add_motor_raw_6dof(AP_MOTORS_MOT_2,     0,              0,              -0.2f,          0,                  -1.0f,              -1.0f,          2);
-        // Forward thruster at rear right
-        add_motor_raw_6dof(AP_MOTORS_MOT_3,     0,              0,              -1.0f,          0,                  1.0f,               0.2f,           3);
-        // Forward thruster at rear left
-        add_motor_raw_6dof(AP_MOTORS_MOT_4,     0,              0,              1.0f,           0,                  1.0f,               -0.2f,           4);
-        // Front-right vertical thruster
-        add_motor_raw_6dof(AP_MOTORS_MOT_5,     1.0f,           -1.0f,          0,              -1.0f,              0,                  0,              5);
-        // Front-left vertical thruster
-        add_motor_raw_6dof(AP_MOTORS_MOT_6,     -1.0f,          -1.0f,          0,              -1.0f,              0,                  0,              6);
-        // Rear-right vertical thruster
-        add_motor_raw_6dof(AP_MOTORS_MOT_7,     1.0f,           1.0f,           0,              -1.0f,              0,                  0,              7);
-        // Rear-left vertical thruster
-        add_motor_raw_6dof(AP_MOTORS_MOT_8,     -1.0f,          1.0f,           0,              -1.0f,              0,                  0,              8);
+        _frame_class_string = "ZODA_6DOF";      
+        //                 Motor #              Roll    Pitch       Yaw           D       F       R     Test
+        add_motor_raw_6dof(AP_MOTORS_MOT_1,   0.154f,   0.288f,  -1.000f,        0,   0.866f,  -1.000f, 1); // Right vectored
+        add_motor_raw_6dof(AP_MOTORS_MOT_2,  -0.154f,   0.288f,   1.000f,        0,   0.866f,   1.000f, 2); // Left vectored
+        add_motor_raw_6dof(AP_MOTORS_MOT_3,        0,   0.129f,  -0.962f,        0,   1.000f,        0, 3); // Forward thruster at rear right
+        add_motor_raw_6dof(AP_MOTORS_MOT_4,        0,   0.129f,   0.962f,        0,   1.000f,        0, 4); // Forward thruster at rear left
+        add_motor_raw_6dof(AP_MOTORS_MOT_5,   1.000f,  -1.000f,        0,  -1.000f,        0,        0, 5); // Front-right vertical
+        add_motor_raw_6dof(AP_MOTORS_MOT_6,  -1.000f,  -1.000f,        0,  -1.000f,        0,        0, 6); // Front-left vertical
+        add_motor_raw_6dof(AP_MOTORS_MOT_7,   1.000f,   0.604f,        0,  -1.000f,        0,        0, 7); // Rear-right vertical
+        add_motor_raw_6dof(AP_MOTORS_MOT_8,  -1.000f,   0.604f,        0,  -1.000f,        0,        0, 8); // Rear-left vertical
         break;
 
     case SUB_FRAME_SIMPLEROV_3:
@@ -206,11 +198,12 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
     case SUB_FRAME_SIMPLEROV_5:
     default:
         _frame_class_string = "DEFAULT";
-        add_motor_raw_6dof(AP_MOTORS_MOT_1,     0,              0,              -1.0f,          0,                  1.0f,               0,              1);
-        add_motor_raw_6dof(AP_MOTORS_MOT_2,     0,              0,              1.0f,           0,                  1.0f,               0,              2);
-        add_motor_raw_6dof(AP_MOTORS_MOT_3,     1.0f,           0,              0,              -1.0f,              0,                  0,              3);
-        add_motor_raw_6dof(AP_MOTORS_MOT_4,     -1.0f,          0,              0,              -1.0f,              0,                  0,              4);
-        add_motor_raw_6dof(AP_MOTORS_MOT_5,     0,              0,              0,              0,                  0,                  1.0f,           5);
+        //                 Motor #               Roll       Pitch               Yaw             D         F             R               Test
+        add_motor_raw_6dof(AP_MOTORS_MOT_1,     0,              0,              -1.0f,          0,                  1.0f,               0,              1); // Right forward
+        add_motor_raw_6dof(AP_MOTORS_MOT_2,     0,              0,              1.0f,           0,                  1.0f,               0,              2); // Left forward
+        add_motor_raw_6dof(AP_MOTORS_MOT_3,     1.0f,           0,              0,              -1.0f,              0,                  0,              3); // Right vertical
+        add_motor_raw_6dof(AP_MOTORS_MOT_4,     -1.0f,          0,              0,              -1.0f,              0,                  0,              4); // Left vertical
+        add_motor_raw_6dof(AP_MOTORS_MOT_5,     0,              0,              0,              0,                  0,                  1.0f,           5); // Lateral
         break;
     }
 }

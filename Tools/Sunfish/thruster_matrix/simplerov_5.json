@@ -1,0 +1,43 @@
+{
+    "frame": "SUB_FRAME_SIMPLEROV_5",
+    "motor_count": 5,
+    "normalize": true,
+    "handedness_torque_factor": 0.0,
+    "thrusters": [
+        {
+            "motor": 1,
+            "description": "Right forward",
+            "position": {"x": 0.0, "y": 1.0, "z": 0.0},
+            "orientation": {"yaw": 0.0, "pitch": 0.0},
+            "handedness": "ccw"
+        },
+        {
+            "motor": 2,
+            "description": "Left forward",
+            "position": {"x": 0.0, "y": -1.0, "z": 0.0},
+            "orientation": {"yaw": 0.0, "pitch": 0.0},
+            "handedness": "cw"
+        },
+        {
+            "motor": 3,
+            "description": "Right vertical",
+            "position": {"x": 0.0, "y": 1.0, "z": 0.0},
+            "orientation": {"yaw": 0.0, "pitch": -90.0},
+            "handedness": "ccw"
+        },
+        {
+            "motor": 4,
+            "description": "Left vertical",
+            "position": {"x": 0.0, "y": -1.0, "z": 0.0},
+            "orientation": {"yaw": 0.0, "pitch": -90.0},
+            "handedness": "cw"
+        },
+        {
+            "motor": 5,
+            "description": "Lateral",
+            "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+            "orientation": {"yaw": 90.0, "pitch": 0.0},
+            "handedness": "ccw"
+        }
+    ]
+}
