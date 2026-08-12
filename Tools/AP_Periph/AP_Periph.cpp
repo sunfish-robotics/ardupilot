@@ -173,6 +173,11 @@ void AP_Periph_FW::init()
 
 #if AP_PERIPH_BARO_ENABLED
     baro.init();
+    // let sensor settle before reading (copied from ardusub)
+    for (uint8_t i = 0; i < 10; i++) {
+        baro.update();
+        hal.scheduler->delay(100);
+    }
 #endif
 
 #if AP_PERIPH_IMU_ENABLED
@@ -321,6 +326,10 @@ void AP_Periph_FW::init()
 
 #if AP_PERIPH_ACTUATOR_TELEM_ENABLED
     actuator_telem.init();
+#endif
+
+#if AP_PERIPH_SUNK_SENSOR_ENABLED
+    sunk_sensor.init();
 #endif
 
     start_ms = AP_HAL::millis();
@@ -506,6 +515,13 @@ void AP_Periph_FW::update()
         // update battery at 10Hz
         battery.last_read_ms = now;
         battery_lib.read();
+    }
+#endif
+
+#if AP_PERIPH_SUNK_SENSOR_ENABLED
+    if (now - sunk_sensor.last_update_ms >= 100) {
+        sunk_sensor.last_update_ms = now;
+        sunk_sensor.update();
     }
 #endif
 
